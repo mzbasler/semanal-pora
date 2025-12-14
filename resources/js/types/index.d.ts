@@ -20,13 +20,18 @@ export interface NavItem {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    badge?: number;
+}
+
+export interface BadgeData {
+    matches: number;
 }
 
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
-    sidebarOpen: boolean;
+    badges: BadgeData;
     [key: string]: unknown;
 }
 
@@ -39,5 +44,33 @@ export interface User {
     two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;
-    [key: string]: unknown; // This allows for additional properties...
+    role?: string;
+    [key: string]: unknown;
+}
+
+export interface Team {
+    id: number;
+    name: string;
+    color: string;
+}
+
+export interface MatchConfirmation {
+    id: number;
+    user_id: number;
+    is_confirmed: boolean;
+}
+
+export interface NextMatch {
+    id: number;
+    scheduled_at: string;
+    status: string;
+    max_players: number;
+    confirmed_count: number;
+    team_a: Team;
+    team_b: Team;
+}
+
+export interface DashboardProps {
+    nextMatch: NextMatch | null;
+    userConfirmation: MatchConfirmation | null;
 }

@@ -7,7 +7,6 @@ import { Head, Link } from '@inertiajs/react';
 import { Calendar, Users, Trophy, ArrowLeftRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import SoccerLineUp from 'react-soccer-lineup';
 
 interface Team {
     id: number;
@@ -67,13 +66,6 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
     const teamBPlayers = nextMatch?.players?.filter((p) => p.team.id === nextMatch.team_b.id) || [];
     const hasPlayers = teamAPlayers.length > 0 || teamBPlayers.length > 0;
 
-    // Função para gerar URL do avatar
-    const getAvatarUrl = (name: string, teamColor: string) => {
-        const bgColor = teamColor.replace('#', '');
-        const textColor = teamColor === '#3B82F6' ? 'fff' : '000';
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bgColor}&color=${textColor}&size=128&bold=true`;
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Partidas" />
@@ -126,88 +118,73 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                             </div>
                         </div>
 
-                        {/* Campo de Futebol com Escalação */}
+                        {/* Escalação dos Times */}
                         {hasPlayers ? (
-                            <div className="grid gap-6 md:grid-cols-[1fr_2fr_1fr] items-center">
+                            <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
                                 {/* Time A */}
-                                <div className="flex items-center justify-center min-h-[450px]">
-                                    <div className="space-y-1.5 w-full">
-                                        {teamAPlayers.map((player, index) => (
-                                        <div
-                                            key={player.id}
-                                            className="flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 text-xs transition-colors hover:bg-accent"
-                                        >
-                                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                                                {index + 1}
-                                            </span>
-                                            <img
-                                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(player.user.name)}&background=${nextMatch.team_a.color.replace('#', '')}&color=fff&size=24`}
-                                                alt={player.user.name}
+                                <Card variant="ghost">
+                                    <CardContent className="p-4">
+                                        <div className="mb-3 flex items-center gap-2">
+                                            <div
                                                 className="h-6 w-6 rounded-full"
+                                                style={{ backgroundColor: nextMatch.team_a.color }}
                                             />
-                                            <span className="font-medium truncate">{player.user.name}</span>
+                                            <span className="font-semibold">{nextMatch.team_a.name}</span>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
+                                        <div className="space-y-2">
+                                            {teamAPlayers.map((player, index) => (
+                                                <div
+                                                    key={player.id}
+                                                    className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent"
+                                                >
+                                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                                                        {index + 1}
+                                                    </span>
+                                                    <img
+                                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(player.user.name)}&background=${nextMatch.team_a.color.replace('#', '')}&color=fff&size=32`}
+                                                        alt={player.user.name}
+                                                        className="h-8 w-8 rounded-full"
+                                                    />
+                                                    <span className="font-medium">{player.user.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
 
-                            {/* Soccer Field */}
-                            <div className="flex items-center justify-center min-h-[450px]">
-                                <div className="w-full max-h-full">
-                                    <SoccerLineUp
-                                        size="responsive"
-                                        color="#22c55e"
-                                        pattern="lines"
-                                        homeTeam={{
-                                            squad: {
-                                                gk: teamAPlayers.slice(0, 1).map(() => ({})),
-                                                df: teamAPlayers.slice(1, 4).map(() => ({})),
-                                                fw: teamAPlayers.slice(4, 7).map(() => ({})),
-                                            },
-                                            style: {
-                                                color: '#3B82F6',
-                                                borderColor: 'transparent',
-                                            },
-                                        }}
-                                        awayTeam={{
-                                            squad: {
-                                                gk: teamBPlayers.slice(0, 1).map(() => ({})),
-                                                df: teamBPlayers.slice(1, 4).map(() => ({})),
-                                                fw: teamBPlayers.slice(4, 7).map(() => ({})),
-                                            },
-                                            style: {
-                                                color: '#FFFFFF',
-                                                borderColor: 'transparent',
-                                            },
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Time B */}
-                            <div className="flex items-center justify-center min-h-[450px]">
-                                <div className="space-y-1.5 w-full">
-                                    {teamBPlayers.map((player, index) => (
-                                        <div
-                                            key={player.id}
-                                            className="flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 text-xs transition-colors hover:bg-accent"
-                                        >
-                                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                                                {index + 1}
-                                            </span>
-                                            <img
-                                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(player.user.name)}&background=E5E7EB&color=000&size=24`}
-                                                alt={player.user.name}
+                                {/* Time B */}
+                                <Card variant="ghost">
+                                    <CardContent className="p-4">
+                                        <div className="mb-3 flex items-center gap-2">
+                                            <div
                                                 className="h-6 w-6 rounded-full"
+                                                style={{ backgroundColor: nextMatch.team_b.color }}
                                             />
-                                            <span className="font-medium truncate">{player.user.name}</span>
+                                            <span className="font-semibold">{nextMatch.team_b.name}</span>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="space-y-2">
+                                            {teamBPlayers.map((player, index) => (
+                                                <div
+                                                    key={player.id}
+                                                    className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent"
+                                                >
+                                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                                                        {index + 1}
+                                                    </span>
+                                                    <img
+                                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(player.user.name)}&background=${nextMatch.team_b.color.replace('#', '')}&color=000&size=32`}
+                                                        alt={player.user.name}
+                                                        className="h-8 w-8 rounded-full"
+                                                    />
+                                                    <span className="font-medium">{player.user.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </div>
-                        </div>
                         ) : (
-                            <Card className="mx-auto max-w-2xl">
+                            <Card variant="ghost" className="mx-auto max-w-2xl">
                                 <CardContent className="flex flex-col items-center justify-center py-12">
                                     <Users className="mb-4 h-16 w-16 text-muted-foreground" />
                                     <h3 className="mb-2 text-lg font-semibold">Aguardando Formação de Equipes</h3>
@@ -242,7 +219,7 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
 
                         return (
                             <Link key={match.id} href={`/matches/${match.id}`}>
-                                <Card className="group cursor-pointer transition-all hover:border-primary">
+                                <Card variant="ghost" className="group cursor-pointer transition-all hover:border-accent">
                                     <CardContent className="p-4">
                                         {/* Data e Status */}
                                         <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
@@ -305,7 +282,7 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                 </div>
 
                 {matches.data.length === 0 && (
-                    <Card>
+                    <Card variant="ghost">
                         <CardContent className="flex flex-col items-center justify-center py-12">
                             <Trophy className="mb-4 h-16 w-16 text-muted-foreground" />
                             <p className="text-lg font-semibold">Nenhuma partida encontrada</p>

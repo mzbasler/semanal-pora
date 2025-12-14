@@ -45,28 +45,6 @@ class FootballMatchController extends Controller
         ]);
     }
 
-    public function teamFormation(): Response
-    {
-        $this->authorize('viewAny', FootballMatch::class);
-
-        // Partidas agendadas que ainda não têm times formados
-        $matches = FootballMatch::query()
-            ->with(['teamA', 'teamB'])
-            ->withCount([
-                'confirmations' => function ($query) {
-                    $query->where('is_confirmed', true);
-                }
-            ])
-            ->where('status', 'scheduled')
-            ->whereDoesntHave('players')
-            ->orderBy('scheduled_at')
-            ->get();
-
-        return Inertia::render('matches/team-formation', [
-            'matches' => $matches,
-        ]);
-    }
-
     public function create(): Response
     {
         $this->authorize('create', FootballMatch::class);

@@ -59,10 +59,10 @@ export default function StandingsIndex({ standings }: Props) {
 
                 {standings.length > 0 && (
                     <div className="grid gap-4 md:grid-cols-4">
-                        <Card>
+                        <Card variant="ghost">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Líder</CardTitle>
-                                <Trophy className="h-4 w-4 text-yellow-500" />
+                                <Trophy className="h-4 w-4 text-accent" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">{standings[0]?.user.name}</div>
@@ -70,10 +70,10 @@ export default function StandingsIndex({ standings }: Props) {
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card variant="ghost">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Artilheiro</CardTitle>
-                                <Target className="h-4 w-4 text-red-500" />
+                                <Target className="h-4 w-4 text-accent" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">{topScorer?.user.name}</div>
@@ -81,10 +81,10 @@ export default function StandingsIndex({ standings }: Props) {
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card variant="ghost">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Assistências</CardTitle>
-                                <Users className="h-4 w-4 text-blue-500" />
+                                <Users className="h-4 w-4 text-accent" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">{topAssister?.user.name}</div>
@@ -92,10 +92,10 @@ export default function StandingsIndex({ standings }: Props) {
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card variant="ghost">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Aproveitamento</CardTitle>
-                                <TrendingUp className="h-4 w-4 text-green-500" />
+                                <TrendingUp className="h-4 w-4 text-accent" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">{bestPerformance?.user.name}</div>
@@ -105,7 +105,7 @@ export default function StandingsIndex({ standings }: Props) {
                     </div>
                 )}
 
-                <Card>
+                <Card variant="ghost">
                     <CardHeader>
                         <CardTitle>Tabela de Classificação</CardTitle>
                         <CardDescription>Ordenado por pontos, vitórias e saldo de gols</CardDescription>
@@ -150,7 +150,7 @@ export default function StandingsIndex({ standings }: Props) {
                                                     </td>
                                                     <td className="p-3 font-medium">{player.user.name}</td>
                                                     <td className="p-3 text-center">
-                                                        <Badge className="bg-green-600">{player.points}</Badge>
+                                                        <Badge className="bg-accent text-accent-foreground">{player.points}</Badge>
                                                     </td>
                                                     <td className="p-3 text-center">{player.matches_played}</td>
                                                     <td className="p-3 text-center text-green-600 font-semibold">
@@ -211,7 +211,7 @@ export default function StandingsIndex({ standings }: Props) {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card variant="ghost">
                     <CardHeader>
                         <CardTitle>Legenda</CardTitle>
                     </CardHeader>

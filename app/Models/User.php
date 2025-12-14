@@ -68,19 +68,4 @@ class User extends Authenticatable
     {
         return $this->hasMany(MatchPlayer::class);
     }
-
-    public function votesAsVoter(): HasMany
-    {
-        return $this->hasMany(Vote::class, 'voter_id');
-    }
-
-    public function votesAsPresidentCandidate(): HasMany
-    {
-        return $this->hasMany(Vote::class, 'president_candidate_id');
-    }
-
-    public function votesAsVicePresidentCandidate(): HasMany
-    {
-        return $this->hasMany(Vote::class, 'vice_president_candidate_id');
-    }
 }

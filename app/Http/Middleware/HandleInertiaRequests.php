@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\FootballMatch;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -45,7 +46,31 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'badges' => fn () => $this->getBadgeData($request),
+        ];
+    }
+
+    /**
+     * @return array{matches: int}
+     */
+    private function getBadgeData(Request $request): array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return ['matches' => 0];
+        }
+
+        $pendingMatchesCount = FootballMatch::query()
+            ->where('status', 'scheduled')
+            ->where('scheduled_at', '>=', now())
+            ->whereDoesntHave('confirmations', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
+            ->count();
+
+        return [
+            'matches' => $pendingMatchesCount,
         ];
     }
 }
