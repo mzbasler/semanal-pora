@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Calendar, Users, Trophy, ArrowLeftRight, Plus, Square, Minus, Redo, Icon, type LucideProps } from 'lucide-react';
+import { Calendar, Users, Trophy, ArrowLeftRight, Plus, Square, Minus, Redo, Icon, type LucideProps, Trash2 } from 'lucide-react';
 import { soccerBall } from '@lucide/lab';
 
 const SoccerBallIcon = (props: LucideProps) => (
@@ -81,6 +81,7 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
     const { pendingMatch } = usePage<{ pendingMatch: PendingMatch | null }>().props;
     const [isLoading, setIsLoading] = useState<'confirm' | 'decline' | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const isAdmin = auth.user.role === 'president' || auth.user.role === 'vice_president';
 
@@ -151,6 +152,16 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
             preserveScroll: true,
             onFinish: () => setIsSaving(false),
         });
+    };
+
+    const handleDelete = () => {
+        if (!nextMatch) return;
+        if (confirm('Tem certeza que deseja excluir esta partida? Esta ação não pode ser desfeita.')) {
+            setIsDeleting(true);
+            router.delete(`/matches/${nextMatch.id}`, {
+                onFinish: () => setIsDeleting(false),
+            });
+        }
     };
 
     const renderPlayerStatCard = (player: MatchPlayer) => {
@@ -373,20 +384,35 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                 <Badge variant="secondary" className="mt-2 text-xs">Em andamento</Badge>
                             )}
                             {isAdmin && nextMatch.status === 'scheduled' && (
-                                <Button
-                                    onClick={handleFinalize}
-                                    disabled={isSaving}
-                                    className="mt-3 hover:opacity-90"
-                                    size="sm"
-                                    style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
-                                >
-                                    {isSaving ? (
-                                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                                    ) : (
-                                        <Square className="h-4 w-4" />
-                                    )}
-                                    Finalizar
-                                </Button>
+                                <div className="flex gap-2 mt-3">
+                                    <Button
+                                        onClick={handleFinalize}
+                                        disabled={isSaving}
+                                        className="hover:opacity-90"
+                                        size="sm"
+                                        style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                                    >
+                                        {isSaving ? (
+                                            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                        ) : (
+                                            <Square className="h-4 w-4" />
+                                        )}
+                                        Finalizar
+                                    </Button>
+                                    <Button
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-red-500 border-red-500/80 hover:bg-red-500 hover:text-white hover:border-red-500"
+                                    >
+                                        {isDeleting ? (
+                                            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <Trash2 className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                </div>
                             )}
                         </div>
 
@@ -443,20 +469,35 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                     <Badge variant="secondary" className="mt-2 text-xs">Em andamento</Badge>
                                 )}
                                 {isAdmin && nextMatch.status === 'scheduled' && (
-                                    <Button
-                                        onClick={handleFinalize}
-                                        disabled={isSaving}
-                                        className="mt-3 hover:opacity-90"
-                                        size="sm"
-                                        style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
-                                    >
-                                        {isSaving ? (
-                                            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                                        ) : (
-                                            <Square className="h-4 w-4" />
-                                        )}
-                                        Finalizar
-                                    </Button>
+                                    <div className="flex gap-2 mt-3">
+                                        <Button
+                                            onClick={handleFinalize}
+                                            disabled={isSaving}
+                                            className="hover:opacity-90"
+                                            size="sm"
+                                            style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                                        >
+                                            {isSaving ? (
+                                                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                            ) : (
+                                                <Square className="h-4 w-4" />
+                                            )}
+                                            Finalizar
+                                        </Button>
+                                        <Button
+                                            onClick={handleDelete}
+                                            disabled={isDeleting}
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-red-500 border-red-500/80 hover:bg-red-500 hover:text-white hover:border-red-500"
+                                        >
+                                            {isDeleting ? (
+                                                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                                <Trash2 className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
 
@@ -497,12 +538,26 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                 {nextMatch.confirmations.length} confirmados de {nextMatch.max_players}
                             </p>
                             {isAdmin && (
-                                <Link href={`/matches/${nextMatch.id}/assign-teams`}>
-                                    <Button className="hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
-                                        <ArrowLeftRight className="mr-2 h-4 w-4" />
-                                        Montar Times
+                                <div className="flex gap-2">
+                                    <Link href={`/matches/${nextMatch.id}/assign-teams`}>
+                                        <Button className="hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
+                                            <ArrowLeftRight className="mr-2 h-4 w-4" />
+                                            Montar Times
+                                        </Button>
+                                    </Link>
+                                    <Button
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                        variant="outline"
+                                        className="text-red-500 border-red-500/80 hover:bg-red-500 hover:text-white hover:border-red-500"
+                                    >
+                                        {isDeleting ? (
+                                            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <Trash2 className="h-4 w-4" />
+                                        )}
                                     </Button>
-                                </Link>
+                                </div>
                             )}
                         </CardContent>
                     </Card>

@@ -315,4 +315,14 @@ class FootballMatchController extends Controller
         return redirect()->route('matches.index')
             ->with('success', 'Estatísticas atualizadas com sucesso!');
     }
+
+    public function destroy(FootballMatch $match)
+    {
+        $this->authorize('delete', $match);
+
+        $match->delete();
+
+        return redirect()->route('matches.index')
+            ->with('success', 'Partida excluída com sucesso!');
+    }
 }

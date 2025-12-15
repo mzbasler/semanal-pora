@@ -27,6 +27,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('matches/{match}/assign-teams', [\App\Http\Controllers\FootballMatchController::class, 'assignTeamsPage'])->name('matches.assign-teams');
     Route::post('matches/{match}/assign-teams', [\App\Http\Controllers\FootballMatchController::class, 'assignTeams'])->name('matches.assign-teams.store');
     Route::post('matches/{match}/update-stats', [\App\Http\Controllers\FootballMatchController::class, 'updateStats'])->name('matches.update-stats');
+    Route::delete('matches/{match}', [\App\Http\Controllers\FootballMatchController::class, 'destroy'])->name('matches.destroy');
 
     // Players (admin only)
     Route::middleware(['admin'])->group(function () {
