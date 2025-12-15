@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,8 +14,14 @@ class Team extends Model
 
     protected $fillable = [
         'name',
-        'color',
     ];
+
+    protected $appends = ['color'];
+
+    protected function color(): Attribute
+    {
+        return Attribute::get(fn () => config("teams.colors.{$this->name}", '#888888'));
+    }
 
     public function matchesAsTeamA(): HasMany
     {

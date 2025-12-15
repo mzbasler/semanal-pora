@@ -47,6 +47,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'badges' => fn () => $this->getBadgeData($request),
+            'pendingMatch' => fn () => $this->getPendingMatch($request),
         ];
     }
 
@@ -71,6 +72,45 @@ class HandleInertiaRequests extends Middleware
 
         return [
             'matches' => $pendingMatchesCount,
+        ];
+    }
+
+    private function getPendingMatch(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $match = FootballMatch::query()
+            ->with(['teamA', 'teamB'])
+            ->withCount(['confirmations as confirmed_count' => function ($query) {
+                $query->where('status', 'confirmed');
+            }])
+            ->where('status', 'scheduled')
+            ->where('scheduled_at', '>=', now())
+            ->orderBy('scheduled_at')
+            ->first();
+
+        if (! $match) {
+            return null;
+        }
+
+        $userConfirmation = $match->confirmations()
+            ->where('user_id', $user->id)
+            ->first();
+
+        return [
+            'match' => [
+                'id' => $match->id,
+                'scheduled_at' => $match->scheduled_at,
+                'max_players' => $match->max_players,
+                'confirmed_count' => $match->confirmed_count,
+                'team_a' => $match->teamA,
+                'team_b' => $match->teamB,
+            ],
+            'userConfirmation' => $userConfirmation,
         ];
     }
 }

@@ -6,6 +6,7 @@ import InputError from '@/components/input-error';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
+import { colors } from '@/config/colors';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -72,7 +73,7 @@ export default function MatchCreate() {
                             </div>
 
                             <div className="flex gap-3">
-                                <Button type="submit" disabled={processing} className="flex-1">
+                                <Button type="submit" disabled={processing} className="flex-1 hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
                                     Criar Partida
                                 </Button>
                                 <Button type="button" variant="outline" onClick={() => window.history.back()}>

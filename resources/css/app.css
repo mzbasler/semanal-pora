@@ -67,7 +67,7 @@
 
 /* Light Mode - Semanal do Porã Theme */
 :root {
-    --background: #f8fafc;
+    --background: #ffffff;
     --foreground: #0D1B4C;
     --card: #ffffff;
     --card-foreground: #0D1B4C;
@@ -146,4 +146,12 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+.hero-video {
+    position: absolute !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center bottom !important;
 }

@@ -1,0 +1,23 @@
+{
+    "name": "Semanal do Porã",
+    "short_name": "Semanal",
+    "description": "Organize o racha, sorteie os times, vote nos craques",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0D1B4C",
+    "theme_color": "#0D1B4C",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/images/emblema-logo.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        }
+    ]
+}

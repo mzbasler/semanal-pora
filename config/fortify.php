@@ -144,9 +144,9 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Features::registration(), // Desabilitado - presidente cadastra jogadores
         Features::resetPasswords(),
-        Features::emailVerification(),
+        // Features::emailVerification(), // Desabilitado - jogadores nao precisam verificar
         Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => true,

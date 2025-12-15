@@ -15,7 +15,7 @@ export function NextMatchCard({ match, userConfirmation }: NextMatchCardProps) {
     const handleConfirmation = () => {
         if (!match) return;
 
-        router.post(`/matches/${match.id}/confirm`, {}, {
+        router.post(`/matches/${match.id}/confirm`, { confirmed: true }, {
             preserveScroll: true,
         });
     };
@@ -113,8 +113,8 @@ export function NextMatchCard({ match, userConfirmation }: NextMatchCardProps) {
                         )}
 
                         <Button variant="outline" size="sm" asChild>
-                            <Link href={`/matches/${match.id}`}>
-                                Detalhes
+                            <Link href="/matches">
+                                Ver mais
                             </Link>
                         </Button>
                     </div>

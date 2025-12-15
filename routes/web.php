@@ -12,7 +12,7 @@ Route::get('/', function (MatchService $matchService) {
     ]);
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', \App\Http\Controllers\DashboardController::class)->name('dashboard');
 
     // Standings / Leaderboard
@@ -22,13 +22,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('matches', [\App\Http\Controllers\FootballMatchController::class, 'index'])->name('matches.index');
     Route::get('matches/create', [\App\Http\Controllers\FootballMatchController::class, 'create'])->name('matches.create');
     Route::post('matches', [\App\Http\Controllers\FootballMatchController::class, 'store'])->name('matches.store');
-    Route::get('matches/{match}', [\App\Http\Controllers\FootballMatchController::class, 'show'])->name('matches.show');
     Route::post('matches/{match}/confirm', [\App\Http\Controllers\FootballMatchController::class, 'confirm'])->name('matches.confirm');
     Route::post('matches/{match}/toggle-confirmation', [\App\Http\Controllers\FootballMatchController::class, 'togglePlayerConfirmation'])->name('matches.toggle-confirmation');
     Route::get('matches/{match}/assign-teams', [\App\Http\Controllers\FootballMatchController::class, 'assignTeamsPage'])->name('matches.assign-teams');
     Route::post('matches/{match}/assign-teams', [\App\Http\Controllers\FootballMatchController::class, 'assignTeams'])->name('matches.assign-teams.store');
-    Route::get('matches/{match}/lineup', [\App\Http\Controllers\FootballMatchController::class, 'lineup'])->name('matches.lineup');
     Route::post('matches/{match}/update-stats', [\App\Http\Controllers\FootballMatchController::class, 'updateStats'])->name('matches.update-stats');
+
+    // Players (admin only)
+    Route::middleware(['admin'])->group(function () {
+        Route::get('players', [\App\Http\Controllers\PlayerController::class, 'index'])->name('players.index');
+        Route::get('players/create', [\App\Http\Controllers\PlayerController::class, 'create'])->name('players.create');
+        Route::post('players', [\App\Http\Controllers\PlayerController::class, 'store'])->name('players.store');
+        Route::get('players/{player}/edit', [\App\Http\Controllers\PlayerController::class, 'edit'])->name('players.edit');
+        Route::put('players/{player}', [\App\Http\Controllers\PlayerController::class, 'update'])->name('players.update');
+        Route::delete('players/{player}', [\App\Http\Controllers\PlayerController::class, 'destroy'])->name('players.destroy');
+    });
 });
 
 require __DIR__.'/settings.php';

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\FootballMatch;
 use App\Models\MatchPlayer;
 use App\Models\Team;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 class MatchService
@@ -12,7 +13,7 @@ class MatchService
     public function drawTeams(FootballMatch $match): array
     {
         $confirmedPlayers = $match->confirmations()
-            ->where('is_confirmed', true)
+            ->where('status', 'confirmed')
             ->with('user')
             ->get()
             ->pluck('user');
@@ -72,28 +73,26 @@ class MatchService
 
     public function getPlayerStatistics(): Collection
     {
-        $players = MatchPlayer::query()
-            ->select('user_id')
-            ->selectRaw('SUM(goals) as total_goals')
-            ->selectRaw('SUM(assists) as total_assists')
-            ->selectRaw('COUNT(DISTINCT football_match_id) as matches_played')
-            ->with(['user', 'footballMatch'])
-            ->groupBy('user_id')
-            ->get();
+        $users = User::all();
 
-        return $players->map(function ($player) {
+        return $users->map(function ($user) {
             $wins = 0;
             $draws = 0;
             $losses = 0;
             $goalsFor = 0;
             $goalsAgainst = 0;
+            $totalGoals = 0;
+            $totalAssists = 0;
 
-            $playerMatches = MatchPlayer::where('user_id', $player->user_id)
+            $playerMatches = MatchPlayer::where('user_id', $user->id)
                 ->with(['footballMatch', 'team'])
                 ->get();
 
             foreach ($playerMatches as $matchPlayer) {
                 $match = $matchPlayer->footballMatch;
+
+                $totalGoals += $matchPlayer->goals;
+                $totalAssists += $matchPlayer->assists;
 
                 if ($match->status !== 'completed') {
                     continue;
@@ -122,8 +121,8 @@ class MatchService
             $aproveitamento = $completedMatches > 0 ? ($totalPoints / ($completedMatches * 3)) * 100 : 0;
 
             return [
-                'user_id' => $player->user_id,
-                'user' => $player->user,
+                'user_id' => $user->id,
+                'user' => $user,
                 'matches_played' => $completedMatches,
                 'wins' => $wins,
                 'draws' => $draws,
@@ -131,8 +130,8 @@ class MatchService
                 'goals_for' => $goalsFor,
                 'goals_against' => $goalsAgainst,
                 'goal_difference' => $goalsFor - $goalsAgainst,
-                'total_goals' => $player->total_goals,
-                'total_assists' => $player->total_assists,
+                'total_goals' => $totalGoals,
+                'total_assists' => $totalAssists,
                 'points' => $totalPoints,
                 'aproveitamento' => round($aproveitamento, 1),
             ];

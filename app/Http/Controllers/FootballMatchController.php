@@ -22,7 +22,7 @@ class FootballMatchController extends Controller
                 'teamA',
                 'teamB',
                 'confirmations' => function ($query) {
-                    $query->where('is_confirmed', true);
+                    $query->where('status', 'confirmed');
                 },
                 'confirmations.user',
                 'players.user',
@@ -75,51 +75,21 @@ class FootballMatchController extends Controller
             'status' => 'scheduled',
         ]);
 
-        return redirect()->route('matches.show', $match)
+        return redirect()->route('matches.index')
             ->with('success', 'Partida criada com sucesso!');
-    }
-
-    public function show(FootballMatch $match): Response
-    {
-        $match->load(['teamA', 'teamB', 'confirmations.user', 'players.user', 'players.team']);
-
-        $userConfirmation = $match->confirmations()
-            ->where('user_id', auth()->id())
-            ->first();
-
-        // Jogadores confirmados (ordem de chegada)
-        $confirmedPlayers = $match->confirmations()
-            ->where('is_confirmed', true)
-            ->with('user')
-            ->orderBy('created_at')
-            ->get();
-
-        // Lista de espera (ordem de chegada)
-        $waitingList = $match->waitingList()
-            ->with('user')
-            ->get();
-
-        return Inertia::render('matches/show', [
-            'match' => $match,
-            'userConfirmation' => $userConfirmation,
-            'confirmedPlayers' => $confirmedPlayers,
-            'waitingList' => $waitingList,
-            'availableSlots' => $match->availableSlots(),
-            'isFull' => $match->isFull(),
-        ]);
     }
 
     public function confirm(FootballMatch $match, Request $request)
     {
         $confirmed = $request->boolean('confirmed');
 
-        if ($confirmed) {
-            // Verifica se já existe confirmação
-            $existing = MatchConfirmation::where('football_match_id', $match->id)
-                ->where('user_id', auth()->id())
-                ->first();
+        // Verifica se já existe confirmação
+        $existing = MatchConfirmation::where('football_match_id', $match->id)
+            ->where('user_id', auth()->id())
+            ->first();
 
-            if ($existing) {
+        if ($confirmed) {
+            if ($existing && $existing->status !== 'declined') {
                 return redirect()->back()->with('info', 'Você já confirmou presença nesta partida!');
             }
 
@@ -128,39 +98,59 @@ class FootballMatchController extends Controller
 
             // Determina se o jogador entra direto ou vai para lista de espera
             $isConfirmed = $confirmedCount < $match->max_players;
+            $status = $isConfirmed ? 'confirmed' : 'waiting';
 
-            MatchConfirmation::create([
-                'football_match_id' => $match->id,
-                'user_id' => auth()->id(),
-                'is_confirmed' => $isConfirmed,
-                'confirmed_by' => 'player',
-            ]);
+            if ($existing) {
+                $existing->update([
+                    'is_confirmed' => $isConfirmed,
+                    'status' => $status,
+                    'confirmed_by' => 'player',
+                ]);
+            } else {
+                MatchConfirmation::create([
+                    'football_match_id' => $match->id,
+                    'user_id' => auth()->id(),
+                    'is_confirmed' => $isConfirmed,
+                    'status' => $status,
+                    'confirmed_by' => 'player',
+                ]);
+            }
 
             if ($isConfirmed) {
-                return redirect()->back()->with('success', 'Presença confirmada! Você está dentro da partida.');
+                return redirect()->back()->with('success', 'Presença confirmada!');
             } else {
-                return redirect()->back()->with('info', 'Partida lotada! Você entrou na lista de espera.');
+                return redirect()->back()->with('info', 'Você entrou na lista de espera.');
             }
         } else {
-            // Remove confirmação e move próximo da lista de espera
-            $confirmation = MatchConfirmation::where('football_match_id', $match->id)
-                ->where('user_id', auth()->id())
-                ->first();
-
-            if ($confirmation) {
-                $wasConfirmed = $confirmation->is_confirmed;
-                $confirmation->delete();
+            // Usuário disse que não vai
+            if ($existing) {
+                $wasConfirmed = $existing->is_confirmed;
+                $existing->update([
+                    'is_confirmed' => false,
+                    'status' => 'declined',
+                ]);
 
                 // Se estava confirmado, promove o primeiro da lista de espera
                 if ($wasConfirmed) {
                     $nextInLine = $match->waitingList()->first();
                     if ($nextInLine) {
-                        $nextInLine->update(['is_confirmed' => true]);
+                        $nextInLine->update([
+                            'is_confirmed' => true,
+                            'status' => 'confirmed',
+                        ]);
                     }
                 }
+            } else {
+                MatchConfirmation::create([
+                    'football_match_id' => $match->id,
+                    'user_id' => auth()->id(),
+                    'is_confirmed' => false,
+                    'status' => 'declined',
+                    'confirmed_by' => 'player',
+                ]);
             }
 
-            return redirect()->back()->with('success', 'Presença removida!');
+            return redirect()->back()->with('success', 'Tudo bem, fica pra próxima!');
         }
     }
 
@@ -180,10 +170,11 @@ class FootballMatchController extends Controller
                 ->first();
 
             if ($existing) {
-                // Se já existe mas está na lista de espera, promove para confirmado
-                if (! $existing->is_confirmed) {
+                // Se já existe mas está na lista de espera ou declinado, promove para confirmado
+                if ($existing->status !== 'confirmed') {
                     $existing->update([
                         'is_confirmed' => true,
+                        'status' => 'confirmed',
                         'confirmed_by' => 'admin',
                     ]);
                 }
@@ -193,6 +184,7 @@ class FootballMatchController extends Controller
                     'football_match_id' => $match->id,
                     'user_id' => $validated['user_id'],
                     'is_confirmed' => true,
+                    'status' => 'confirmed',
                     'confirmed_by' => 'admin',
                 ]);
             }
@@ -203,14 +195,17 @@ class FootballMatchController extends Controller
                 ->first();
 
             if ($confirmation) {
-                $wasConfirmed = $confirmation->is_confirmed;
+                $wasConfirmed = $confirmation->status === 'confirmed';
                 $confirmation->delete();
 
                 // Se estava confirmado, promove o primeiro da lista de espera
                 if ($wasConfirmed) {
                     $nextInLine = $match->waitingList()->first();
                     if ($nextInLine) {
-                        $nextInLine->update(['is_confirmed' => true]);
+                        $nextInLine->update([
+                            'is_confirmed' => true,
+                            'status' => 'confirmed',
+                        ]);
                     }
                 }
             }
@@ -224,11 +219,11 @@ class FootballMatchController extends Controller
         $this->authorize('update', $match);
 
         if ($match->players()->count() > 0) {
-            return redirect()->route('matches.lineup', $match);
+            return redirect()->route('matches.index');
         }
 
-        // Buscar TODOS os jogadores
-        $allPlayers = \App\Models\User::where('role', 'player')->get();
+        // Buscar TODOS os usuários que podem jogar (jogadores, presidente, vice)
+        $allPlayers = \App\Models\User::whereIn('role', ['player', 'president', 'vice_president'])->get();
 
         // Buscar confirmações existentes
         $confirmations = $match->confirmations()
@@ -238,7 +233,7 @@ class FootballMatchController extends Controller
 
         // Jogadores confirmados (para formação de times)
         $confirmedPlayers = $match->confirmations()
-            ->where('is_confirmed', true)
+            ->where('status', 'confirmed')
             ->with('user')
             ->get();
 
@@ -259,9 +254,9 @@ class FootballMatchController extends Controller
         }
 
         $validated = $request->validate([
-            'team_a_players' => ['required', 'array', 'min:1'],
+            'team_a_players' => ['required', 'array', 'min:7'],
             'team_a_players.*' => ['required', 'exists:users,id'],
-            'team_b_players' => ['required', 'array', 'min:1'],
+            'team_b_players' => ['required', 'array', 'min:7'],
             'team_b_players.*' => ['required', 'exists:users,id'],
         ]);
 
@@ -285,22 +280,8 @@ class FootballMatchController extends Controller
             ]);
         }
 
-        return redirect()->route('matches.lineup', $match)
+        return redirect()->route('matches.index')
             ->with('success', 'Times montados com sucesso!');
-    }
-
-    public function lineup(FootballMatch $match): Response
-    {
-        $match->load(['teamA', 'teamB', 'players.user', 'players.team']);
-
-        $teamAPlayers = $match->players()->where('team_id', $match->team_a_id)->with('user')->get();
-        $teamBPlayers = $match->players()->where('team_id', $match->team_b_id)->with('user')->get();
-
-        return Inertia::render('matches/lineup', [
-            'match' => $match,
-            'teamAPlayers' => $teamAPlayers,
-            'teamBPlayers' => $teamBPlayers,
-        ]);
     }
 
     public function updateStats(FootballMatch $match, Request $request)
@@ -331,7 +312,7 @@ class FootballMatchController extends Controller
             'played_at' => now(),
         ]);
 
-        return redirect()->route('matches.show', $match)
+        return redirect()->route('matches.index')
             ->with('success', 'Estatísticas atualizadas com sucesso!');
     }
 }

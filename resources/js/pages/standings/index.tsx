@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { Trophy, Target, Users, TrendingUp } from 'lucide-react';
+import { Trophy, Target, Users, Clock } from 'lucide-react';
 
 interface User {
     id: number;
@@ -43,92 +43,131 @@ export default function StandingsIndex({ standings }: Props) {
         return 'text-muted-foreground';
     };
 
-    const topScorer = standings.length > 0 ? [...standings].sort((a, b) => b.total_goals - a.total_goals)[0] : null;
-    const topAssister = standings.length > 0 ? [...standings].sort((a, b) => b.total_assists - a.total_assists)[0] : null;
-    const bestPerformance =
-        standings.length > 0 ? [...standings].sort((a, b) => b.aproveitamento - a.aproveitamento)[0] : null;
+    // Top 10 artilheiros
+    const topScorers = [...standings]
+        .filter(p => p.total_goals > 0)
+        .sort((a, b) => b.total_goals - a.total_goals)
+        .slice(0, 10);
+
+    // Top 10 assistências
+    const topAssisters = [...standings]
+        .filter(p => p.total_assists > 0)
+        .sort((a, b) => b.total_assists - a.total_assists)
+        .slice(0, 10);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Classificação" />
-            <div className="flex flex-col gap-6 p-6">
+            <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
                 <div>
-                    <h1 className="text-3xl font-bold">Classificação Geral</h1>
-                    <p className="text-muted-foreground">Ranking completo dos jogadores</p>
+                    <h1 className="text-2xl font-bold sm:text-3xl">Classificação Geral</h1>
+                    <p className="text-sm text-muted-foreground sm:text-base">Ranking completo dos jogadores</p>
                 </div>
 
+                {/* Top 10 Lists */}
                 {standings.length > 0 && (
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {/* Top 10 Artilheiros */}
                         <Card variant="ghost">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Líder</CardTitle>
-                                <Trophy className="h-4 w-4 text-accent" />
+                            <CardHeader className="p-4 pb-2">
+                                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                    <Target className="h-4 w-4 text-accent" />
+                                    Top 10 Artilheiros
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{standings[0]?.user.name}</div>
-                                <p className="text-xs text-muted-foreground">{standings[0]?.points} pontos</p>
+                            <CardContent className="p-4 pt-0">
+                                {topScorers.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {topScorers.map((player, index) => (
+                                            <div key={player.user_id} className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-5 text-sm font-bold ${getMedalColor(index + 1)}`}>
+                                                        {index + 1}º
+                                                    </span>
+                                                    <span className="text-sm truncate max-w-[120px]">{player.user.name}</span>
+                                                </div>
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {player.total_goals} gols
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
+                                )}
                             </CardContent>
                         </Card>
 
+                        {/* Top 10 Assistências */}
                         <Card variant="ghost">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Artilheiro</CardTitle>
-                                <Target className="h-4 w-4 text-accent" />
+                            <CardHeader className="p-4 pb-2">
+                                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                    <Users className="h-4 w-4 text-accent" />
+                                    Top 10 Assistências
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{topScorer?.user.name}</div>
-                                <p className="text-xs text-muted-foreground">{topScorer?.total_goals} gols</p>
+                            <CardContent className="p-4 pt-0">
+                                {topAssisters.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {topAssisters.map((player, index) => (
+                                            <div key={player.user_id} className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-5 text-sm font-bold ${getMedalColor(index + 1)}`}>
+                                                        {index + 1}º
+                                                    </span>
+                                                    <span className="text-sm truncate max-w-[120px]">{player.user.name}</span>
+                                                </div>
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {player.total_assists} assist.
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
+                                )}
                             </CardContent>
                         </Card>
 
+                        {/* Top 10 Atrasos */}
                         <Card variant="ghost">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Assistências</CardTitle>
-                                <Users className="h-4 w-4 text-accent" />
+                            <CardHeader className="p-4 pb-2">
+                                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                    <Clock className="h-4 w-4 text-accent" />
+                                    Top 10 Atrasos
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{topAssister?.user.name}</div>
-                                <p className="text-xs text-muted-foreground">{topAssister?.total_assists} assistências</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card variant="ghost">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Aproveitamento</CardTitle>
-                                <TrendingUp className="h-4 w-4 text-accent" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{bestPerformance?.user.name}</div>
-                                <p className="text-xs text-muted-foreground">{bestPerformance?.aproveitamento}%</p>
+                            <CardContent className="p-4 pt-0">
+                                <p className="text-sm text-muted-foreground text-center py-4">Em breve</p>
                             </CardContent>
                         </Card>
                     </div>
                 )}
 
                 <Card variant="ghost">
-                    <CardHeader>
-                        <CardTitle>Tabela de Classificação</CardTitle>
-                        <CardDescription>Ordenado por pontos, vitórias e saldo de gols</CardDescription>
+                    <CardHeader className="p-4 sm:p-6">
+                        <CardTitle className="text-base sm:text-lg">Tabela de Classificação</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">Ordenado por pontos, vitórias e saldo de gols</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-2 sm:p-6">
                         {standings.length > 0 ? (
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="w-full text-xs sm:text-sm">
                                     <thead>
                                         <tr className="border-b">
-                                            <th className="p-3 text-left font-semibold">#</th>
-                                            <th className="p-3 text-left font-semibold">Jogador</th>
-                                            <th className="p-3 text-center font-semibold">Pts</th>
-                                            <th className="p-3 text-center font-semibold">J</th>
-                                            <th className="p-3 text-center font-semibold">V</th>
-                                            <th className="p-3 text-center font-semibold">E</th>
-                                            <th className="p-3 text-center font-semibold">D</th>
-                                            <th className="p-3 text-center font-semibold">GP</th>
-                                            <th className="p-3 text-center font-semibold">GC</th>
-                                            <th className="p-3 text-center font-semibold">SG</th>
-                                            <th className="p-3 text-center font-semibold">Gols</th>
-                                            <th className="p-3 text-center font-semibold">Ass</th>
-                                            <th className="p-3 text-center font-semibold">Aprov%</th>
+                                            <th className="p-2 text-left font-semibold sm:p-3">#</th>
+                                            <th className="p-2 text-left font-semibold sm:p-3">Jogador</th>
+                                            <th className="p-2 text-center font-semibold sm:p-3">Pts</th>
+                                            <th className="hidden p-2 text-center font-semibold sm:table-cell sm:p-3">J</th>
+                                            <th className="hidden p-2 text-center font-semibold sm:table-cell sm:p-3">V</th>
+                                            <th className="hidden p-2 text-center font-semibold sm:table-cell sm:p-3">E</th>
+                                            <th className="hidden p-2 text-center font-semibold sm:table-cell sm:p-3">D</th>
+                                            <th className="hidden p-2 text-center font-semibold md:table-cell sm:p-3">GP</th>
+                                            <th className="hidden p-2 text-center font-semibold md:table-cell sm:p-3">GC</th>
+                                            <th className="hidden p-2 text-center font-semibold sm:table-cell sm:p-3">SG</th>
+                                            <th className="hidden p-2 text-center font-semibold lg:table-cell sm:p-3">Gols</th>
+                                            <th className="hidden p-2 text-center font-semibold lg:table-cell sm:p-3">Ass</th>
+                                            <th className="p-2 text-center font-semibold sm:p-3">%</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -139,62 +178,39 @@ export default function StandingsIndex({ standings }: Props) {
                                                     key={player.user_id}
                                                     className="border-b transition-colors hover:bg-muted/50 last:border-0"
                                                 >
-                                                    <td className="p-3">
-                                                        <div className="flex items-center gap-2">
+                                                    <td className="p-2 sm:p-3">
+                                                        <div className="flex items-center">
                                                             {position <= 3 ? (
-                                                                <Trophy className={`h-5 w-5 ${getMedalColor(position)}`} />
+                                                                <Trophy className={`h-4 w-4 ${getMedalColor(position)}`} />
                                                             ) : (
                                                                 <span className="text-muted-foreground">{position}</span>
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className="p-3 font-medium">{player.user.name}</td>
-                                                    <td className="p-3 text-center">
-                                                        <Badge className="bg-accent text-accent-foreground">{player.points}</Badge>
+                                                    <td className="p-2 font-medium sm:p-3">{player.user.name}</td>
+                                                    <td className="p-2 text-center sm:p-3">
+                                                        <Badge className="bg-accent text-accent-foreground text-xs">{player.points}</Badge>
                                                     </td>
-                                                    <td className="p-3 text-center">{player.matches_played}</td>
-                                                    <td className="p-3 text-center text-green-600 font-semibold">
-                                                        {player.wins}
-                                                    </td>
-                                                    <td className="p-3 text-center text-yellow-600 font-semibold">
-                                                        {player.draws}
-                                                    </td>
-                                                    <td className="p-3 text-center text-red-600 font-semibold">
-                                                        {player.losses}
-                                                    </td>
-                                                    <td className="p-3 text-center">{player.goals_for}</td>
-                                                    <td className="p-3 text-center">{player.goals_against}</td>
-                                                    <td className="p-3 text-center">
-                                                        <span
-                                                            className={
-                                                                player.goal_difference > 0
-                                                                    ? 'text-green-600 font-semibold'
-                                                                    : player.goal_difference < 0
-                                                                      ? 'text-red-600 font-semibold'
-                                                                      : ''
-                                                            }
-                                                        >
-                                                            {player.goal_difference > 0 && '+'}
-                                                            {player.goal_difference}
+                                                    <td className="hidden p-2 text-center sm:table-cell sm:p-3">{player.matches_played}</td>
+                                                    <td className="hidden p-2 text-center text-green-600 font-semibold sm:table-cell sm:p-3">{player.wins}</td>
+                                                    <td className="hidden p-2 text-center text-yellow-600 font-semibold sm:table-cell sm:p-3">{player.draws}</td>
+                                                    <td className="hidden p-2 text-center text-red-600 font-semibold sm:table-cell sm:p-3">{player.losses}</td>
+                                                    <td className="hidden p-2 text-center md:table-cell sm:p-3">{player.goals_for}</td>
+                                                    <td className="hidden p-2 text-center md:table-cell sm:p-3">{player.goals_against}</td>
+                                                    <td className="hidden p-2 text-center sm:table-cell sm:p-3">
+                                                        <span className={player.goal_difference > 0 ? 'text-green-600 font-semibold' : player.goal_difference < 0 ? 'text-red-600 font-semibold' : ''}>
+                                                            {player.goal_difference > 0 && '+'}{player.goal_difference}
                                                         </span>
                                                     </td>
-                                                    <td className="p-3 text-center">
-                                                        <Badge variant="secondary">{player.total_goals}</Badge>
+                                                    <td className="hidden p-2 text-center lg:table-cell sm:p-3">
+                                                        <Badge variant="secondary" className="text-xs">{player.total_goals}</Badge>
                                                     </td>
-                                                    <td className="p-3 text-center">
-                                                        <Badge variant="outline">{player.total_assists}</Badge>
+                                                    <td className="hidden p-2 text-center lg:table-cell sm:p-3">
+                                                        <Badge variant="outline" className="text-xs">{player.total_assists}</Badge>
                                                     </td>
-                                                    <td className="p-3 text-center">
-                                                        <Badge
-                                                            variant={
-                                                                player.aproveitamento >= 70
-                                                                    ? 'default'
-                                                                    : player.aproveitamento >= 50
-                                                                      ? 'secondary'
-                                                                      : 'outline'
-                                                            }
-                                                        >
-                                                            {player.aproveitamento.toFixed(1)}%
+                                                    <td className="p-2 text-center sm:p-3">
+                                                        <Badge className="text-xs" variant={player.aproveitamento >= 70 ? 'default' : player.aproveitamento >= 50 ? 'secondary' : 'outline'}>
+                                                            {player.aproveitamento.toFixed(0)}%
                                                         </Badge>
                                                     </td>
                                                 </tr>
@@ -212,44 +228,17 @@ export default function StandingsIndex({ standings }: Props) {
                 </Card>
 
                 <Card variant="ghost">
-                    <CardHeader>
-                        <CardTitle>Legenda</CardTitle>
+                    <CardHeader className="p-4 sm:p-6">
+                        <CardTitle className="text-sm sm:text-base">Legenda</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-2 text-sm md:grid-cols-2 lg:grid-cols-3">
-                            <div>
-                                <span className="font-semibold">Pts:</span> Pontos
-                            </div>
-                            <div>
-                                <span className="font-semibold">J:</span> Jogos
-                            </div>
-                            <div>
-                                <span className="font-semibold">V:</span> Vitórias
-                            </div>
-                            <div>
-                                <span className="font-semibold">E:</span> Empates
-                            </div>
-                            <div>
-                                <span className="font-semibold">D:</span> Derrotas
-                            </div>
-                            <div>
-                                <span className="font-semibold">GP:</span> Gols Pró
-                            </div>
-                            <div>
-                                <span className="font-semibold">GC:</span> Gols Contra
-                            </div>
-                            <div>
-                                <span className="font-semibold">SG:</span> Saldo de Gols
-                            </div>
-                            <div>
-                                <span className="font-semibold">Gols:</span> Gols Marcados
-                            </div>
-                            <div>
-                                <span className="font-semibold">Ass:</span> Assistências
-                            </div>
-                            <div>
-                                <span className="font-semibold">Aprov%:</span> Aproveitamento
-                            </div>
+                    <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                        <div className="grid grid-cols-2 gap-1 text-xs sm:grid-cols-3 sm:gap-2 sm:text-sm md:grid-cols-6">
+                            <div><span className="font-semibold">Pts:</span> Pontos</div>
+                            <div><span className="font-semibold">J:</span> Jogos</div>
+                            <div><span className="font-semibold">V:</span> Vitórias</div>
+                            <div><span className="font-semibold">E:</span> Empates</div>
+                            <div><span className="font-semibold">D:</span> Derrotas</div>
+                            <div><span className="font-semibold">%:</span> Aprov.</div>
                         </div>
                     </CardContent>
                 </Card>

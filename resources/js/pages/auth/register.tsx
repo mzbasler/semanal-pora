@@ -5,6 +5,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
+import { colors } from '@/config/colors';
 
 export default function Register() {
     return (
@@ -98,7 +99,8 @@ export default function Register() {
 
                             <button
                                 type="submit"
-                                className="mt-2 w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold text-[#0D1B4C] transition-all hover:bg-yellow-300 disabled:opacity-50"
+                                className="mt-2 w-full rounded-full px-6 py-3 text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+                                style={{ backgroundColor: colors.brand.yellow, color: colors.brand.blue }}
                                 tabIndex={5}
                                 data-test="register-user-button"
                             >

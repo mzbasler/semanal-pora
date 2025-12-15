@@ -3,10 +3,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
-import { Calendar, Users, Trophy, ArrowLeftRight } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Calendar, Users, Trophy, ArrowLeftRight, Plus, Square, Minus, Redo, Icon, type LucideProps } from 'lucide-react';
+import { soccerBall } from '@lucide/lab';
+
+const SoccerBallIcon = (props: LucideProps) => (
+    <Icon iconNode={soccerBall} {...props} />
+);
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useState } from 'react';
+import { colors, getColorsForBackground, isLightColor } from '@/config/colors';
 
 interface Team {
     id: number;
@@ -36,8 +43,19 @@ interface Match {
     team_b_score: number | null;
     team_a: Team;
     team_b: Team;
+    max_players: number;
     confirmations: Array<{ user: User }>;
     players?: MatchPlayer[];
+}
+
+interface PendingMatch {
+    match: {
+        id: number;
+        scheduled_at: string;
+        max_players: number;
+        confirmed_count: number;
+    };
+    userConfirmation: { id: number; is_confirmed: boolean; status: string } | null;
 }
 
 interface Props {
@@ -60,236 +78,509 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
+    const { pendingMatch } = usePage<{ pendingMatch: PendingMatch | null }>().props;
+    const [isLoading, setIsLoading] = useState<'confirm' | 'decline' | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
     const isAdmin = auth.user.role === 'president' || auth.user.role === 'vice_president';
 
     const teamAPlayers = nextMatch?.players?.filter((p) => p.team.id === nextMatch.team_a.id) || [];
     const teamBPlayers = nextMatch?.players?.filter((p) => p.team.id === nextMatch.team_b.id) || [];
     const hasPlayers = teamAPlayers.length > 0 || teamBPlayers.length > 0;
 
+    // Estado local para stats (para admin editar)
+    const [stats, setStats] = useState<Record<number, { goals: number; assists: number }>>(
+        [...teamAPlayers, ...teamBPlayers].reduce(
+            (acc, player) => ({
+                ...acc,
+                [player.id]: { goals: player.goals, assists: player.assists },
+            }),
+            {},
+        ),
+    );
+
+    // Calcular placar baseado nos stats locais
+    const teamAScore = teamAPlayers.reduce((sum, p) => sum + (stats[p.id]?.goals || 0), 0);
+    const teamBScore = teamBPlayers.reduce((sum, p) => sum + (stats[p.id]?.goals || 0), 0);
+
+    // Dados para o card de confirmação
+    const hasConfirmedOrWaiting = pendingMatch?.userConfirmation?.status === 'confirmed' || pendingMatch?.userConfirmation?.status === 'waiting';
+    const showConfirmationCard = pendingMatch && !hasConfirmedOrWaiting;
+    const pendingMatchData = pendingMatch?.match;
+    const scheduledDate = pendingMatchData ? new Date(pendingMatchData.scheduled_at) : null;
+    const availableSlots = pendingMatchData ? pendingMatchData.max_players - pendingMatchData.confirmed_count : 0;
+    const isFull = availableSlots <= 0;
+
+    const handleConfirm = () => {
+        if (!pendingMatchData) return;
+        setIsLoading('confirm');
+        router.post(`/matches/${pendingMatchData.id}/confirm`, { confirmed: true }, {
+            preserveScroll: true,
+            onFinish: () => setIsLoading(null),
+        });
+    };
+
+    const handleDecline = () => {
+        if (!pendingMatchData) return;
+        setIsLoading('decline');
+        router.post(`/matches/${pendingMatchData.id}/confirm`, { confirmed: false }, {
+            preserveScroll: true,
+            onFinish: () => setIsLoading(null),
+        });
+    };
+
+    const handleStatChange = (playerId: number, field: 'goals' | 'assists', delta: number) => {
+        setStats((prev) => ({
+            ...prev,
+            [playerId]: {
+                ...prev[playerId],
+                [field]: Math.max(0, (prev[playerId]?.[field] || 0) + delta),
+            },
+        }));
+    };
+
+    const handleFinalize = () => {
+        if (!nextMatch) return;
+        setIsSaving(true);
+        const players = Object.entries(stats).map(([id, data]) => ({
+            id: parseInt(id),
+            ...data,
+        }));
+
+        router.post(`/matches/${nextMatch.id}/update-stats`, { players }, {
+            preserveScroll: true,
+            onFinish: () => setIsSaving(false),
+        });
+    };
+
+    const renderPlayerStatCard = (player: MatchPlayer) => {
+        const playerStats = stats[player.id] || { goals: 0, assists: 0 };
+        const teamColor = player.team.color;
+        const colorSet = getColorsForBackground(teamColor);
+
+        if (isAdmin && nextMatch?.status === 'scheduled') {
+            return (
+                <div key={player.id} className="rounded-xl p-3" style={{ backgroundColor: teamColor }}>
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold" style={{ color: colorSet.text }}>{player.user.name}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        {/* Gols */}
+                        <div className="flex items-center justify-between rounded-lg p-2" style={{ backgroundColor: colorSet.overlay }}>
+                            <SoccerBallIcon className="h-5 w-5 shrink-0" style={{ color: colorSet.text }} />
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleStatChange(player.id, 'goals', -1)}
+                                    className="h-7 w-7 rounded-full flex items-center justify-center text-base font-bold active:scale-95"
+                                    style={{ backgroundColor: teamColor, color: colorSet.text }}
+                                >
+                                    −
+                                </button>
+                                <span className="w-6 text-center text-lg font-bold" style={{ color: colorSet.text }}>{playerStats.goals}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleStatChange(player.id, 'goals', 1)}
+                                    className="h-7 w-7 rounded-full flex items-center justify-center text-base font-bold active:scale-95"
+                                    style={{ backgroundColor: teamColor, color: colorSet.text }}
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Assistências */}
+                        <div className="flex items-center justify-between rounded-lg p-2" style={{ backgroundColor: colorSet.overlay }}>
+                            <Redo className="h-5 w-5 shrink-0" style={{ color: colorSet.text }} />
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleStatChange(player.id, 'assists', -1)}
+                                    className="h-7 w-7 rounded-full flex items-center justify-center text-base font-bold active:scale-95"
+                                    style={{ backgroundColor: teamColor, color: colorSet.text }}
+                                >
+                                    −
+                                </button>
+                                <span className="w-6 text-center text-lg font-bold" style={{ color: colorSet.text }}>{playerStats.assists}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleStatChange(player.id, 'assists', 1)}
+                                    className="h-7 w-7 rounded-full flex items-center justify-center text-base font-bold active:scale-95"
+                                    style={{ backgroundColor: teamColor, color: colorSet.text }}
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Visualização normal (não admin ou partida finalizada)
+        return (
+            <div key={player.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ backgroundColor: teamColor }}>
+                <span className="text-sm font-medium" style={{ color: colorSet.text }}>{player.user.name}</span>
+                <div className="flex items-center gap-3 text-sm" style={{ color: colorSet.text }}>
+                    {playerStats.goals > 0 && (
+                        <span className="flex items-center gap-1">
+                            <SoccerBallIcon className="h-4 w-4" /> {playerStats.goals}
+                        </span>
+                    )}
+                    {playerStats.assists > 0 && (
+                        <span className="flex items-center gap-1">
+                            <Redo className="h-4 w-4" /> {playerStats.assists}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Partidas" />
-            <div className="flex flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
-                    {isAdmin && (
-                        <Link href="/matches/create">
-                            <Button>Nova Partida</Button>
-                        </Link>
-                    )}
-                    <div className="flex-1 text-center">
-                        <h1 className="text-3xl font-bold">Próxima Partida</h1>
-                        <p className="text-muted-foreground">Campeonato Semanal {new Date().getFullYear()}</p>
+            <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
+                {/* Card de Confirmação - para quem ainda não confirmou */}
+                {showConfirmationCard && scheduledDate && (
+                    <Card
+                        variant="ghost"
+                        className="border transition-all duration-300 bg-card"
+                        style={{
+                            borderColor: colors.actions.primary,
+                        }}
+                    >
+                        <CardContent className="p-3 flex items-center gap-3">
+                            <div
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
+                                style={{ backgroundColor: colors.actions.primary }}
+                            >
+                                <Calendar className="h-5 w-5" style={{ color: colors.actions.primaryText }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-black tracking-wide capitalize">
+                                    {format(scheduledDate, "EEEE", { locale: ptBR })} às {format(scheduledDate, "HH:mm")}
+                                </h3>
+                                <p className="text-xs font-semibold" style={{ color: colors.actions.primary }}>
+                                    Aguardando confirmação
+                                </p>
+                            </div>
+                            <Button
+                                onClick={handleConfirm}
+                                disabled={isLoading !== null}
+                                size="sm"
+                                className="shrink-0 font-bold hover:opacity-90"
+                                style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                            >
+                                {isLoading === 'confirm' ? (
+                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    isFull ? 'ESPERA' : 'CONFIRMAR'
+                                )}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Card para quem já confirmou - permite cancelar */}
+                {hasConfirmedOrWaiting && scheduledDate && (
+                    <Card
+                        variant="ghost"
+                        className="border transition-all duration-300 bg-card"
+                        style={{
+                            borderColor: colors.actions.success,
+                        }}
+                    >
+                        <CardContent className="p-3 flex items-center gap-3">
+                            <div
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
+                                style={{ backgroundColor: colors.actions.success }}
+                            >
+                                <Calendar className="h-5 w-5" style={{ color: colors.actions.successText }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-black tracking-wide capitalize">
+                                    {format(scheduledDate, "EEEE", { locale: ptBR })} às {format(scheduledDate, "HH:mm")}
+                                </h3>
+                                <p className="text-xs font-semibold" style={{ color: colors.actions.success }}>
+                                    {pendingMatch?.userConfirmation?.status === 'confirmed'
+                                        ? '✓ Presença confirmada'
+                                        : '⏳ Na lista de espera'
+                                    }
+                                </p>
+                            </div>
+                            <Button
+                                onClick={handleDecline}
+                                disabled={isLoading !== null}
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0 font-bold text-red-500 border-red-500/80 hover:bg-red-500 hover:text-white hover:border-red-500"
+                            >
+                                {isLoading === 'decline' ? (
+                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    'CANCELAR'
+                                )}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Header */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold sm:text-3xl">Partidas</h1>
+                        <p className="text-sm text-muted-foreground sm:text-base">Campeonato Semanal {new Date().getFullYear()}</p>
                     </div>
-                    {isAdmin && <div className="w-[120px]"></div>}
+                    {isAdmin && (
+                        <Button asChild className="w-full sm:w-auto hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
+                            <Link href="/matches/create">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nova Partida
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
-                {/* Próxima Partida em Destaque */}
-                {nextMatch && (
-                    <div>
-                        {/* Placar */}
-                        <div className="mb-1 flex items-center justify-center gap-6 py-2">
+                {/* Próxima Partida com Escalação e Stats */}
+                {nextMatch && hasPlayers && (
+                    <div className="space-y-4">
+                        {/* Mobile: Placar em cima, times embaixo */}
+                        {/* Desktop: 3 colunas lado a lado */}
+
+                        {/* Placar - sempre visível no topo em mobile */}
+                        <div className="flex flex-col items-center text-center py-4 md:hidden">
                             <div className="flex items-center gap-3">
+                                <div className="flex flex-col items-center">
+                                    <div className="h-12 w-12 rounded-full" style={{ backgroundColor: nextMatch.team_a.color }} />
+                                    <span className="text-xs font-medium mt-1">{nextMatch.team_a.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-4xl font-bold">{teamAScore}</span>
+                                    <span className="text-xl font-black text-muted-foreground">x</span>
+                                    <span className="text-4xl font-bold">{teamBScore}</span>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <div className="h-12 w-12 rounded-full border-2 border-gray-300" style={{ backgroundColor: nextMatch.team_b.color }} />
+                                    <span className="text-xs font-medium mt-1">{nextMatch.team_b.name}</span>
+                                </div>
+                            </div>
+                            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                <span>{format(new Date(nextMatch.scheduled_at), "dd/MM · HH'h'mm", { locale: ptBR })}</span>
+                            </div>
+                            {nextMatch.status === 'scheduled' && (
+                                <Badge variant="secondary" className="mt-2 text-xs">Em andamento</Badge>
+                            )}
+                            {isAdmin && nextMatch.status === 'scheduled' && (
+                                <Button
+                                    onClick={handleFinalize}
+                                    disabled={isSaving}
+                                    className="mt-3 hover:opacity-90"
+                                    size="sm"
+                                    style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                                >
+                                    {isSaving ? (
+                                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                    ) : (
+                                        <Square className="h-4 w-4" />
+                                    )}
+                                    Finalizar
+                                </Button>
+                            )}
+                        </div>
+
+                        {/* Mobile: Times empilhados */}
+                        <div className="space-y-4 md:hidden">
+                            {/* Time A */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2 px-1">
+                                    <div className="h-5 w-5 rounded-full" style={{ backgroundColor: nextMatch.team_a.color }} />
+                                    <span className="font-bold">{nextMatch.team_a.name}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    {teamAPlayers.map(player => renderPlayerStatCard(player))}
+                                </div>
+                            </div>
+
+                            {/* Time B */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2 px-1">
+                                    <div className="h-5 w-5 rounded-full border border-gray-300" style={{ backgroundColor: nextMatch.team_b.color }} />
+                                    <span className="font-bold">{nextMatch.team_b.name}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    {teamBPlayers.map(player => renderPlayerStatCard(player))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Desktop: 3 colunas */}
+                        <div className="hidden md:grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
+                            {/* Coluna 1: Time A */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-3 px-1">
+                                    <div className="h-5 w-5 rounded-full" style={{ backgroundColor: nextMatch.team_a.color }} />
+                                    <span className="font-bold">{nextMatch.team_a.name}</span>
+                                </div>
+                                <div className="space-y-2">
+                                    {teamAPlayers.map(player => renderPlayerStatCard(player))}
+                                </div>
+                            </div>
+
+                            {/* Coluna 2: Placar, Data e Status */}
+                            <div className="flex flex-col items-center text-center sticky top-4 pt-8 px-6">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-5xl font-bold">{teamAScore}</span>
+                                    <span className="text-xl font-black text-muted-foreground">x</span>
+                                    <span className="text-5xl font-bold">{teamBScore}</span>
+                                </div>
+                                <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>{format(new Date(nextMatch.scheduled_at), "dd/MM · HH'h'mm", { locale: ptBR })}</span>
+                                </div>
+                                {nextMatch.status === 'scheduled' && (
+                                    <Badge variant="secondary" className="mt-2 text-xs">Em andamento</Badge>
+                                )}
+                                {isAdmin && nextMatch.status === 'scheduled' && (
+                                    <Button
+                                        onClick={handleFinalize}
+                                        disabled={isSaving}
+                                        className="mt-3 hover:opacity-90"
+                                        size="sm"
+                                        style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                                    >
+                                        {isSaving ? (
+                                            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                        ) : (
+                                            <Square className="h-4 w-4" />
+                                        )}
+                                        Finalizar
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* Coluna 3: Time B */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-3 px-1">
+                                    <div className="h-5 w-5 rounded-full border border-gray-300" style={{ backgroundColor: nextMatch.team_b.color }} />
+                                    <span className="font-bold">{nextMatch.team_b.name}</span>
+                                </div>
+                                <div className="space-y-2">
+                                    {teamBPlayers.map(player => renderPlayerStatCard(player))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Próxima Partida sem Escalação */}
+                {nextMatch && !hasPlayers && (
+                    <Card variant="ghost" className="mx-auto max-w-2xl">
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                            <div className="flex items-center justify-center gap-4 mb-6">
                                 <div
                                     className="h-12 w-12 rounded-full"
                                     style={{ backgroundColor: nextMatch.team_a.color }}
                                 />
-                                <span className="text-lg font-semibold">{nextMatch.team_a.name}</span>
-                            </div>
-
-                            <span className="text-2xl font-bold text-muted-foreground">vs</span>
-
-                            <div className="flex items-center gap-3">
-                                <span className="text-lg font-semibold">{nextMatch.team_b.name}</span>
+                                <span className="text-xl font-bold text-muted-foreground">vs</span>
                                 <div
-                                    className="h-12 w-12 rounded-full"
+                                    className="h-12 w-12 rounded-full border-2 border-gray-300"
                                     style={{ backgroundColor: nextMatch.team_b.color }}
                                 />
                             </div>
-                        </div>
-
-                        <div className="mb-6 flex items-center justify-center">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Calendar className="h-4 w-4" />
-                                <span>
-                                    {format(new Date(nextMatch.scheduled_at), "EEEE, dd 'de' MMMM · HH'h'mm", {
-                                        locale: ptBR,
-                                    })}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Escalação dos Times */}
-                        {hasPlayers ? (
-                            <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
-                                {/* Time A */}
-                                <Card variant="ghost">
-                                    <CardContent className="p-4">
-                                        <div className="mb-3 flex items-center gap-2">
-                                            <div
-                                                className="h-6 w-6 rounded-full"
-                                                style={{ backgroundColor: nextMatch.team_a.color }}
-                                            />
-                                            <span className="font-semibold">{nextMatch.team_a.name}</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {teamAPlayers.map((player, index) => (
-                                                <div
-                                                    key={player.id}
-                                                    className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent"
-                                                >
-                                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                                                        {index + 1}
-                                                    </span>
-                                                    <img
-                                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(player.user.name)}&background=${nextMatch.team_a.color.replace('#', '')}&color=fff&size=32`}
-                                                        alt={player.user.name}
-                                                        className="h-8 w-8 rounded-full"
-                                                    />
-                                                    <span className="font-medium">{player.user.name}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Time B */}
-                                <Card variant="ghost">
-                                    <CardContent className="p-4">
-                                        <div className="mb-3 flex items-center gap-2">
-                                            <div
-                                                className="h-6 w-6 rounded-full"
-                                                style={{ backgroundColor: nextMatch.team_b.color }}
-                                            />
-                                            <span className="font-semibold">{nextMatch.team_b.name}</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {teamBPlayers.map((player, index) => (
-                                                <div
-                                                    key={player.id}
-                                                    className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent"
-                                                >
-                                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                                                        {index + 1}
-                                                    </span>
-                                                    <img
-                                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(player.user.name)}&background=${nextMatch.team_b.color.replace('#', '')}&color=000&size=32`}
-                                                        alt={player.user.name}
-                                                        className="h-8 w-8 rounded-full"
-                                                    />
-                                                    <span className="font-medium">{player.user.name}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        ) : (
-                            <Card variant="ghost" className="mx-auto max-w-2xl">
-                                <CardContent className="flex flex-col items-center justify-center py-12">
-                                    <Users className="mb-4 h-16 w-16 text-muted-foreground" />
-                                    <h3 className="mb-2 text-lg font-semibold">Aguardando Formação de Equipes</h3>
-                                    <p className="mb-4 text-center text-sm text-muted-foreground">
-                                        Os times ainda não foram montados para esta partida
-                                    </p>
-                                    {isAdmin && (
-                                        <Link href={`/matches/${nextMatch.id}/assign-teams`}>
-                                            <Button>
-                                                <ArrowLeftRight className="mr-2 h-4 w-4" />
-                                                Montar Times
-                                            </Button>
-                                        </Link>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
+                            <h3 className="mb-2 text-lg font-semibold">Aguardando Formação</h3>
+                            <p className="mb-1 text-sm text-muted-foreground">
+                                {format(new Date(nextMatch.scheduled_at), "EEEE, dd/MM · HH'h'mm", { locale: ptBR })}
+                            </p>
+                            <p className="mb-4 text-sm text-muted-foreground">
+                                {nextMatch.confirmations.length} confirmados de {nextMatch.max_players}
+                            </p>
+                            {isAdmin && (
+                                <Link href={`/matches/${nextMatch.id}/assign-teams`}>
+                                    <Button className="hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
+                                        <ArrowLeftRight className="mr-2 h-4 w-4" />
+                                        Montar Times
+                                    </Button>
+                                </Link>
+                            )}
+                        </CardContent>
+                    </Card>
                 )}
 
                 {/* Título das Partidas Finalizadas */}
-                <div className="text-center mt-12">
-                    <h2 className="text-3xl font-bold">Partidas Finalizadas</h2>
-                    <p className="text-sm text-muted-foreground">Histórico de resultados</p>
-                </div>
+                {matches.data.length > 0 && (
+                    <>
+                        <div className="mt-8 text-center sm:mt-12">
+                            <h2 className="text-xl font-bold sm:text-2xl">Partidas Anteriores</h2>
+                        </div>
 
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {matches.data.map((match) => {
-                        const isFinished = match.status === 'completed';
-                        const teamAWon = isFinished && (match.team_a_score ?? 0) > (match.team_b_score ?? 0);
-                        const teamBWon = isFinished && (match.team_b_score ?? 0) > (match.team_a_score ?? 0);
+                        <div className="space-y-2">
+                            {matches.data.map((match) => {
+                                const isFinished = match.status === 'completed';
+                                const teamAWon = isFinished && (match.team_a_score ?? 0) > (match.team_b_score ?? 0);
+                                const teamBWon = isFinished && (match.team_b_score ?? 0) > (match.team_a_score ?? 0);
+                                const isDraw = isFinished && match.team_a_score === match.team_b_score;
 
-                        return (
-                            <Link key={match.id} href={`/matches/${match.id}`}>
-                                <Card variant="ghost" className="group cursor-pointer transition-all hover:border-accent">
-                                    <CardContent className="p-4">
-                                        {/* Data e Status */}
-                                        <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-                                            <div className="flex items-center gap-1.5">
-                                                <Calendar className="h-3 w-3" />
-                                                <span>
-                                                    {format(new Date(match.scheduled_at), "dd MMM · HH'h'mm", {
-                                                        locale: ptBR,
-                                                    })}
-                                                </span>
-                                            </div>
-                                            {isFinished ? (
-                                                <Badge variant="outline" className="text-xs">
-                                                    FINAL
-                                                </Badge>
-                                            ) : (
-                                                <div className="flex items-center gap-1">
-                                                    <Users className="h-3 w-3" />
-                                                    <span>{match.confirmations.length}</span>
+                                return (
+                                    <Card key={match.id} variant="ghost">
+                                        <CardContent className="p-3 sm:p-4">
+                                            <div className="grid grid-cols-3 items-center gap-2">
+                                                {/* Coluna 1: Time Azul */}
+                                                <div className="flex items-center gap-2 justify-start">
+                                                    <div
+                                                        className="h-10 w-10 shrink-0 rounded-full shadow-sm"
+                                                        style={{ backgroundColor: match.team_a.color }}
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <span className="font-medium text-sm block truncate">{match.team_a.name}</span>
+                                                        {teamAWon && <Trophy className="h-4 w-4 text-yellow-500" />}
+                                                    </div>
                                                 </div>
-                                            )}
-                                        </div>
 
-                                        {/* Placar - O x O */}
-                                        <div className="flex items-center justify-between gap-4">
-                                            {/* Time A */}
-                                            <div className="flex flex-1 items-center gap-2">
-                                                <div
-                                                    className="h-8 w-8 shrink-0 rounded-full"
-                                                    style={{ backgroundColor: match.team_a.color }}
-                                                />
-                                                {teamAWon && <Trophy className="h-4 w-4 shrink-0 text-yellow-500" />}
+                                                {/* Coluna 2: Placar, Data e Status */}
+                                                <div className="flex flex-col items-center text-center">
+                                                    <div className="flex items-center gap-2 sm:gap-3">
+                                                        <span className="text-2xl sm:text-3xl font-bold tabular-nums">{match.team_a_score}</span>
+                                                        <span className="text-muted-foreground font-medium">x</span>
+                                                        <span className="text-2xl sm:text-3xl font-bold tabular-nums">{match.team_b_score}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                                                        <Calendar className="h-3 w-3" />
+                                                        <span>{format(new Date(match.scheduled_at), "dd/MM", { locale: ptBR })}</span>
+                                                    </div>
+                                                    <Badge variant="outline" className="text-[10px] mt-1">FINAL</Badge>
+                                                </div>
+
+                                                {/* Coluna 3: Time Branco */}
+                                                <div className="flex items-center gap-2 justify-end">
+                                                    <div className="min-w-0 text-right">
+                                                        <span className="font-medium text-sm block truncate">{match.team_b.name}</span>
+                                                        {teamBWon && <Trophy className="h-4 w-4 text-yellow-500 ml-auto" />}
+                                                    </div>
+                                                    <div
+                                                        className="h-10 w-10 shrink-0 rounded-full shadow-sm border-2 border-gray-200"
+                                                        style={{ backgroundColor: match.team_b.color }}
+                                                    />
+                                                </div>
                                             </div>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
 
-                                            {/* Score */}
-                                            <div className="flex shrink-0 items-center gap-3">
-                                                <span className="text-2xl font-bold tabular-nums">
-                                                    {isFinished ? match.team_a_score : '-'}
-                                                </span>
-                                                <span className="text-sm text-muted-foreground">x</span>
-                                                <span className="text-2xl font-bold tabular-nums">
-                                                    {isFinished ? match.team_b_score : '-'}
-                                                </span>
-                                            </div>
-
-                                            {/* Time B */}
-                                            <div className="flex flex-1 items-center justify-end gap-2">
-                                                {teamBWon && <Trophy className="h-4 w-4 shrink-0 text-yellow-500" />}
-                                                <div
-                                                    className="h-8 w-8 shrink-0 rounded-full"
-                                                    style={{ backgroundColor: match.team_b.color }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        );
-                    })}
-                </div>
-
-                {matches.data.length === 0 && (
+                {!nextMatch && matches.data.length === 0 && (
                     <Card variant="ghost">
                         <CardContent className="flex flex-col items-center justify-center py-12">
                             <Trophy className="mb-4 h-16 w-16 text-muted-foreground" />
-                            <p className="text-lg font-semibold">Nenhuma partida encontrada</p>
-                            <p className="text-muted-foreground">Comece criando a primeira partida do campeonato</p>
+                            <p className="text-lg font-semibold">Nenhuma partida</p>
+                            <p className="text-muted-foreground">Crie a primeira partida do campeonato</p>
                             {isAdmin && (
                                 <Link href="/matches/create" className="mt-4">
-                                    <Button>Criar primeira partida</Button>
+                                    <Button className="hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>Criar partida</Button>
                                 </Link>
                             )}
                         </CardContent>

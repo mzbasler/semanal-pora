@@ -27,10 +27,10 @@ import { cn, isSameUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, Trophy, Icon as LucideIcon, type LucideProps } from 'lucide-react';
+import { LayoutGrid, Menu, Trophy, Users, Icon as LucideIcon, type LucideProps, Maximize2, Minimize2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { soccerBall } from '@lucide/lab';
 import AppLogo from './app-logo';
-import AppLogoIcon from './app-logo-icon';
 
 const SoccerBallIcon = (props: LucideProps) => (
     <LucideIcon iconNode={soccerBall} {...props} />
@@ -47,6 +47,27 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     const page = usePage<SharedData>();
     const { auth, badges } = page.props;
     const getInitials = useInitials();
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const isAdmin = auth.user.role === 'president';
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+            setIsFullscreen(true);
+        } else {
+            document.exitFullscreen();
+            setIsFullscreen(false);
+        }
+    };
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     const navItems: NavItem[] = [
         {
@@ -65,6 +86,11 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
             href: '/standings',
             icon: Trophy,
         },
+        ...(isAdmin ? [{
+            title: 'Jogadores',
+            href: '/players',
+            icon: Users,
+        }] : []),
     ];
     return (
         <>
@@ -84,13 +110,13 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                             </SheetTrigger>
                             <SheetContent
                                 side="left"
-                                className="flex h-full w-64 flex-col items-stretch justify-between bg-sidebar"
+                                className="flex h-full w-64 flex-col items-stretch justify-between bg-sidebar text-sidebar-foreground"
                             >
                                 <SheetTitle className="sr-only">
                                     Navigation Menu
                                 </SheetTitle>
                                 <SheetHeader className="flex justify-start text-left">
-                                    <AppLogoIcon className="h-6 w-6 fill-current text-black dark:text-white" />
+                                    <AppLogo />
                                 </SheetHeader>
                                 <div className="flex h-full flex-1 flex-col space-y-4 p-4">
                                     <div className="flex h-full flex-col text-sm">
@@ -175,6 +201,15 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleFullscreen}
+                            className="lg:hidden h-9 w-9"
+                            title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+                        >
+                            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                        </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button

@@ -15,6 +15,7 @@ class MatchConfirmation extends Model
         'football_match_id',
         'user_id',
         'is_confirmed',
+        'status',
         'confirmed_by',
     ];
 

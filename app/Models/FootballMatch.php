@@ -48,7 +48,7 @@ class FootballMatch extends Model
 
     public function confirmedPlayers(): HasMany
     {
-        return $this->confirmations()->where('is_confirmed', true);
+        return $this->confirmations()->where('status', 'confirmed');
     }
 
     public function players(): HasMany
@@ -81,7 +81,7 @@ class FootballMatch extends Model
     public function waitingList(): HasMany
     {
         return $this->confirmations()
-            ->where('is_confirmed', false)
+            ->where('status', 'waiting')
             ->orderBy('created_at');
     }
 }

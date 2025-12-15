@@ -1,12 +1,12 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Users, ArrowLeftRight, UserCheck } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useState } from 'react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { colors, getColorsForBackground } from '@/config/colors';
 
 interface Team {
     id: number;
@@ -34,7 +34,6 @@ interface Match {
 interface Props {
     match: Match;
     allPlayers: User[];
-    confirmations: Confirmation[];
     confirmedPlayers: Confirmation[];
 }
 
@@ -44,43 +43,69 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Montar Times', href: '#' },
 ];
 
-export default function AssignTeams({ match, allPlayers, confirmations, confirmedPlayers }: Props) {
-    const [playerTeams, setPlayerTeams] = useState<Record<number, number>>({});
+type TeamAssignment = 'team_a' | 'team_b';
+
+export default function AssignTeams({ match, allPlayers, confirmedPlayers }: Props) {
     const [processing, setProcessing] = useState(false);
 
-    // Criar um mapa de user_id para confirmation para fácil acesso
-    const confirmationMap = confirmations.reduce((acc, conf) => {
-        acc[conf.user_id] = conf;
-        return acc;
-    }, {} as Record<number, Confirmation>);
+    // IDs dos jogadores confirmados (do banco)
+    const confirmedIds = new Set(confirmedPlayers.map(c => c.user.id));
 
+    // Estado local: distribuição dos times
+    const [teamAssignments, setTeamAssignments] = useState<Record<number, TeamAssignment>>({});
+
+    // Jogadores ordenados: confirmados primeiro, depois alfabético
+    const sortedPlayers = [...allPlayers].sort((a, b) => {
+        const aConfirmed = confirmedIds.has(a.id);
+        const bConfirmed = confirmedIds.has(b.id);
+        if (aConfirmed && !bConfirmed) return -1;
+        if (!aConfirmed && bConfirmed) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    // Toggle confirmação (salva no banco)
     const handleToggleConfirmation = (userId: number, confirmed: boolean) => {
         router.post(`/matches/${match.id}/toggle-confirmation`, {
             user_id: userId,
-            confirmed: confirmed,
+            confirmed,
         }, {
             preserveScroll: true,
+            onSuccess: () => {
+                if (!confirmed) {
+                    // Se removeu confirmação, remove do time também
+                    setTeamAssignments(prev => {
+                        const newState = { ...prev };
+                        delete newState[userId];
+                        return newState;
+                    });
+                }
+            }
         });
     };
 
-    const handleTeamChange = (userId: number, teamId: string) => {
-        if (teamId) {
-            setPlayerTeams({ ...playerTeams, [userId]: Number(teamId) });
-        } else {
-            const newTeams = { ...playerTeams };
-            delete newTeams[userId];
-            setPlayerTeams(newTeams);
-        }
+    // Mudar time (só local)
+    const handleChangeTeam = (userId: number, team: TeamAssignment | null) => {
+        if (!confirmedIds.has(userId)) return; // Só confirmados podem ter time
+
+        setTeamAssignments(prev => {
+            if (team === null) {
+                const newState = { ...prev };
+                delete newState[userId];
+                return newState;
+            }
+            return { ...prev, [userId]: team };
+        });
     };
 
+    // Salvar times
     const handleSubmit = () => {
-        const teamAPlayers = Object.keys(playerTeams)
-            .filter((userId) => playerTeams[Number(userId)] === match.team_a.id)
-            .map(Number);
+        const teamAPlayers = Object.entries(teamAssignments)
+            .filter(([, team]) => team === 'team_a')
+            .map(([userId]) => Number(userId));
 
-        const teamBPlayers = Object.keys(playerTeams)
-            .filter((userId) => playerTeams[Number(userId)] === match.team_b.id)
-            .map(Number);
+        const teamBPlayers = Object.entries(teamAssignments)
+            .filter(([, team]) => team === 'team_b')
+            .map(([userId]) => Number(userId));
 
         setProcessing(true);
         router.post(`/matches/${match.id}/assign-teams`, {
@@ -91,163 +116,117 @@ export default function AssignTeams({ match, allPlayers, confirmations, confirme
         });
     };
 
-    const teamACount = Object.values(playerTeams).filter((teamId) => teamId === match.team_a.id).length;
-    const teamBCount = Object.values(playerTeams).filter((teamId) => teamId === match.team_b.id).length;
-    const canSubmit = teamACount > 0 && teamBCount > 0;
+    const teamACount = Object.values(teamAssignments).filter(t => t === 'team_a').length;
+    const teamBCount = Object.values(teamAssignments).filter(t => t === 'team_b').length;
+    const unassignedConfirmed = confirmedPlayers.filter(c => !teamAssignments[c.user.id]);
+
+    const canSubmit = teamACount >= 7 && teamBCount >= 7;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Montar Times" />
-            <div className="flex flex-col gap-6 p-6">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold">Montar Times</h1>
-                    <p className="text-muted-foreground">
-                        Primeiro confirme os jogadores, depois distribua entre os times
-                    </p>
+            <div className="flex flex-col h-[calc(100vh-120px)]">
+                {/* Header fixo */}
+                <div className="p-4 border-b bg-background">
+                    <h1 className="text-xl font-bold mb-3">Montar Times</h1>
+
+                    {/* Resumo */}
+                    <div className="flex gap-4 text-sm flex-wrap">
+                        <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 rounded-full" style={{ backgroundColor: match.team_a.color }} />
+                            <span className="font-medium">{match.team_a.name}:</span>
+                            <Badge variant="secondary">{teamACount}</Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 rounded-full border-2 border-gray-300" style={{ backgroundColor: match.team_b.color }} />
+                            <span className="font-medium">{match.team_b.name}:</span>
+                            <Badge variant="secondary">{teamBCount}</Badge>
+                        </div>
+                        <div className="flex items-center gap-2 ml-auto">
+                            <Badge variant="outline" className="bg-green-50 text-green-700">
+                                {confirmedIds.size} confirmados
+                            </Badge>
+                            {unassignedConfirmed.length > 0 && (
+                                <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+                                    {unassignedConfirmed.length} sem time
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Seção 1: Confirmação de Presença */}
-                <Card className="max-w-2xl mx-auto w-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <UserCheck className="h-5 w-5" />
-                            Confirmar Presença dos Jogadores
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            {allPlayers.map((player) => {
-                                const isConfirmed = !!confirmationMap[player.id];
+                {/* Lista de jogadores */}
+                <div className="flex-1 overflow-y-auto p-4">
+                    <div className="space-y-1">
+                        {sortedPlayers.map(player => {
+                            const isConfirmed = confirmedIds.has(player.id);
+                            const assignment = teamAssignments[player.id];
 
-                                return (
-                                    <div
-                                        key={player.id}
-                                        className="flex items-center justify-between rounded-lg border p-3"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                                                <Users className="h-4 w-4 text-muted-foreground" />
-                                            </div>
-                                            <span className="font-medium">{player.name}</span>
-                                        </div>
+                            return (
+                                <div
+                                    key={player.id}
+                                    className={`flex items-center gap-3 rounded-lg border p-2 transition-colors ${
+                                        isConfirmed ? 'bg-background' : 'bg-muted/30'
+                                    }`}
+                                >
+                                    {/* Checkbox de confirmação */}
+                                    <Checkbox
+                                        checked={isConfirmed}
+                                        onCheckedChange={(checked) => handleToggleConfirmation(player.id, !!checked)}
+                                        className="flex-shrink-0"
+                                    />
 
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox
-                                                checked={isConfirmed}
-                                                onCheckedChange={(checked) =>
-                                                    handleToggleConfirmation(player.id, checked === true)
+                                    {/* Nome */}
+                                    <span className={`font-medium text-sm flex-1 truncate ${!isConfirmed ? 'text-muted-foreground' : ''}`}>
+                                        {player.name}
+                                    </span>
+
+                                    {/* Botões de time (só para confirmados) */}
+                                    {isConfirmed && (
+                                        <div className="flex rounded-lg overflow-hidden border flex-shrink-0">
+                                            <button
+                                                onClick={() => handleChangeTeam(player.id, assignment === 'team_a' ? null : 'team_a')}
+                                                className="px-3 py-1 text-xs font-medium transition-colors"
+                                                style={assignment === 'team_a'
+                                                    ? { backgroundColor: match.team_a.color, color: getColorsForBackground(match.team_a.color).text }
+                                                    : {}
                                                 }
-                                            />
-                                            <span className="text-sm text-muted-foreground">
-                                                {isConfirmed ? 'Confirmado' : 'Não confirmado'}
-                                            </span>
+                                            >
+                                                {match.team_a.name}
+                                            </button>
+                                            <button
+                                                onClick={() => handleChangeTeam(player.id, assignment === 'team_b' ? null : 'team_b')}
+                                                className="px-3 py-1 text-xs font-medium transition-colors border-l"
+                                                style={assignment === 'team_b'
+                                                    ? { backgroundColor: match.team_b.color, color: getColorsForBackground(match.team_b.color).text, border: `1px solid ${getColorsForBackground(match.team_b.color).border}` }
+                                                    : {}
+                                                }
+                                            >
+                                                {match.team_b.name}
+                                            </button>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Seção 2: Resumo dos Times */}
-                <div className="grid gap-4 md:grid-cols-2 max-w-2xl mx-auto w-full">
-                    <Card>
-                        <CardContent className="flex items-center justify-between p-4">
-                            <div className="flex items-center gap-3">
-                                <div
-                                    className="h-10 w-10 rounded-full"
-                                    style={{ backgroundColor: match.team_a.color }}
-                                />
-                                <span className="font-semibold">{match.team_a.name}</span>
-                            </div>
-                            <span className="text-2xl font-bold">{teamACount}</span>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center justify-between p-4">
-                            <div className="flex items-center gap-3">
-                                <div
-                                    className="h-10 w-10 rounded-full"
-                                    style={{ backgroundColor: match.team_b.color }}
-                                />
-                                <span className="font-semibold">{match.team_b.name}</span>
-                            </div>
-                            <span className="text-2xl font-bold">{teamBCount}</span>
-                        </CardContent>
-                    </Card>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
-                {/* Seção 3: Distribuição dos Times */}
-                <Card className="max-w-2xl mx-auto w-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <ArrowLeftRight className="h-5 w-5" />
-                            Distribuir Jogadores Confirmados nos Times ({confirmedPlayers.length})
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {confirmedPlayers.map((confirmation) => {
-                                const selectedTeam = playerTeams[confirmation.user.id]?.toString() || '';
-
-                                return (
-                                    <div
-                                        key={confirmation.id}
-                                        className="flex items-center justify-between rounded-lg border p-4"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                                                <Users className="h-5 w-5 text-muted-foreground" />
-                                            </div>
-                                            <span className="font-medium">{confirmation.user.name}</span>
-                                        </div>
-
-                                        <ToggleGroup
-                                            type="single"
-                                            value={selectedTeam}
-                                            onValueChange={(value) => handleTeamChange(confirmation.user.id, value)}
-                                            variant="outline"
-                                        >
-                                            <ToggleGroupItem
-                                                value={match.team_a.id.toString()}
-                                                className="min-w-24 data-[state=on]:bg-blue-600 data-[state=on]:text-white"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="h-3 w-3 rounded-full"
-                                                        style={{ backgroundColor: match.team_a.color }}
-                                                    />
-                                                    Azul
-                                                </div>
-                                            </ToggleGroupItem>
-                                            <ToggleGroupItem
-                                                value={match.team_b.id.toString()}
-                                                className="min-w-24 data-[state=on]:bg-gray-200 data-[state=on]:text-gray-900"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="h-3 w-3 rounded-full border"
-                                                        style={{ backgroundColor: match.team_b.color }}
-                                                    />
-                                                    Branco
-                                                </div>
-                                            </ToggleGroupItem>
-                                        </ToggleGroup>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <div className="flex gap-4 justify-center">
+                {/* Botão fixo */}
+                <div className="p-4 border-t bg-background">
                     <Button
                         onClick={handleSubmit}
                         disabled={!canSubmit || processing}
+                        className="w-full hover:opacity-90"
                         size="lg"
+                        style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
                     >
-                        <ArrowLeftRight className="mr-2 h-5 w-5" />
-                        Finalizar Formação de Equipes
+                        {processing ? (
+                            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                        ) : (
+                            <Check className="h-5 w-5 mr-2" />
+                        )}
+                        Confirmar Times ({teamACount} × {teamBCount})
                     </Button>
                 </div>
             </div>

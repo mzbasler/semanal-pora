@@ -1,10 +1,10 @@
 import InputError from '@/components/input-error';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
-import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import { Form, Head, Link } from '@inertiajs/react';
+import { colors } from '@/config/colors';
 
 interface LoginProps {
     status?: string;
@@ -93,7 +93,8 @@ export default function Login({
 
                             <button
                                 type="submit"
-                                className="mt-4 w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold text-[#0D1B4C] transition-all hover:bg-yellow-300 disabled:opacity-50"
+                                className="mt-4 w-full rounded-full px-6 py-3 text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+                                style={{ backgroundColor: colors.brand.yellow, color: colors.brand.blue }}
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
@@ -106,7 +107,7 @@ export default function Login({
                         {canRegister && (
                             <div className="text-center text-sm text-white/70">
                                 Não tem uma conta?{' '}
-                                <Link href={register()} tabIndex={5} className="text-yellow-400 hover:text-yellow-300">
+                                <Link href="/register" tabIndex={5} className="text-yellow-400 hover:text-yellow-300">
                                     Cadastre-se
                                 </Link>
                             </div>
