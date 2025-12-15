@@ -27,10 +27,10 @@ export function ConfirmationBanner({ match, userConfirmation }: ConfirmationBann
     const [isLoading, setIsLoading] = useState<'confirm' | 'decline' | null>(null);
     const [isDismissed, setIsDismissed] = useState(false);
 
-    // Mostra se: há partida E (não tem confirmação OU status é 'declined') E não fechou
-    const hasConfirmedOrWaiting = userConfirmation?.status === 'confirmed' || userConfirmation?.status === 'waiting';
+    // Mostra apenas se: há partida E não tem nenhum status definido E não fechou manualmente
+    const hasAnyStatus = userConfirmation?.status === 'confirmed' || userConfirmation?.status === 'waiting' || userConfirmation?.status === 'declined';
 
-    if (!match || hasConfirmedOrWaiting || isDismissed) {
+    if (!match || hasAnyStatus || isDismissed) {
         return null;
     }
 
@@ -41,6 +41,14 @@ export function ConfirmationBanner({ match, userConfirmation }: ConfirmationBann
     const handleConfirm = () => {
         setIsLoading('confirm');
         router.post(`/matches/${match.id}/confirm`, { confirmed: true }, {
+            preserveScroll: true,
+            onFinish: () => setIsLoading(null),
+        });
+    };
+
+    const handleDecline = () => {
+        setIsLoading('decline');
+        router.post(`/matches/${match.id}/confirm`, { confirmed: false }, {
             preserveScroll: true,
             onFinish: () => setIsLoading(null),
         });
@@ -88,19 +96,34 @@ export function ConfirmationBanner({ match, userConfirmation }: ConfirmationBann
                             </div>
                         </div>
 
-                        {/* Botão principal */}
-                        <Button
-                            onClick={handleConfirm}
-                            disabled={isLoading !== null}
-                            className="w-full h-12 text-base font-bold"
-                            size="lg"
-                        >
-                            {isLoading === 'confirm' ? (
-                                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                isFull ? 'ENTRAR NA ESPERA' : 'CONFIRMAR PRESENÇA'
-                            )}
-                        </Button>
+                        {/* Botões */}
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={handleDecline}
+                                disabled={isLoading !== null}
+                                variant="outline"
+                                className="flex-1 h-12 text-base font-bold hover:bg-red-500 hover:text-white hover:border-red-500"
+                                size="lg"
+                            >
+                                {isLoading === 'decline' ? (
+                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    'NÃO JOGAR'
+                                )}
+                            </Button>
+                            <Button
+                                onClick={handleConfirm}
+                                disabled={isLoading !== null}
+                                className="flex-1 h-12 text-base font-bold"
+                                size="lg"
+                            >
+                                {isLoading === 'confirm' ? (
+                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    'JOGAR'
+                                )}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

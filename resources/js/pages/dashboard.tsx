@@ -55,6 +55,7 @@ export default function Dashboard() {
     const [isLoading, setIsLoading] = useState(false);
 
     const hasConfirmedOrWaiting = pendingMatch?.userConfirmation?.status === 'confirmed' || pendingMatch?.userConfirmation?.status === 'waiting';
+    const hasDeclined = pendingMatch?.userConfirmation?.status === 'declined';
     const scheduledDate = pendingMatch?.match ? new Date(pendingMatch.match.scheduled_at) : null;
     const isFull = pendingMatch?.match ? pendingMatch.match.confirmed_count >= pendingMatch.match.max_players : false;
 
@@ -87,7 +88,7 @@ export default function Dashboard() {
                         variant="ghost"
                         className="shrink-0 border transition-all duration-300 bg-card"
                         style={{
-                            borderColor: hasConfirmedOrWaiting ? colors.actions.success : colors.actions.primary,
+                            borderColor: hasConfirmedOrWaiting ? colors.actions.success : hasDeclined ? '#ef4444' : colors.actions.primary,
                         }}
                     >
                         <CardContent className="p-3 sm:p-4">
@@ -96,9 +97,9 @@ export default function Dashboard() {
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
                                     <div
                                         className="flex h-12 w-12 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
-                                        style={{ backgroundColor: hasConfirmedOrWaiting ? colors.actions.success : colors.actions.primary }}
+                                        style={{ backgroundColor: hasConfirmedOrWaiting ? colors.actions.success : hasDeclined ? '#ef4444' : colors.actions.primary }}
                                     >
-                                        <Calendar className="h-6 w-6 sm:h-5 sm:w-5" style={{ color: hasConfirmedOrWaiting ? colors.actions.successText : colors.actions.primaryText }} />
+                                        <Calendar className="h-6 w-6 sm:h-5 sm:w-5" style={{ color: hasConfirmedOrWaiting ? colors.actions.successText : '#ffffff' }} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="text-base sm:text-sm font-black tracking-wide capitalize">
@@ -106,13 +107,15 @@ export default function Dashboard() {
                                         </h3>
                                         <p
                                             className="text-sm sm:text-xs font-semibold"
-                                            style={{ color: hasConfirmedOrWaiting ? colors.actions.success : colors.actions.primary }}
+                                            style={{ color: hasConfirmedOrWaiting ? colors.actions.success : hasDeclined ? '#ef4444' : colors.actions.primary }}
                                         >
                                             {hasConfirmedOrWaiting
                                                 ? pendingMatch?.userConfirmation?.status === 'confirmed'
                                                     ? '✓ Presença confirmada'
                                                     : '⏳ Na lista de espera'
-                                                : 'Aguardando confirmação'
+                                                : hasDeclined
+                                                    ? 'Não vou jogar'
+                                                    : 'Aguardando confirmação'
                                             }
                                         </p>
                                     </div>
@@ -127,10 +130,10 @@ export default function Dashboard() {
                                         {isLoading ? (
                                             <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                         ) : (
-                                            'CANCELAR'
+                                            'NÃO JOGAR'
                                         )}
                                     </Button>
-                                ) : (
+                                ) : hasDeclined ? (
                                     <Button
                                         onClick={handleConfirm}
                                         disabled={isLoading}
@@ -140,9 +143,36 @@ export default function Dashboard() {
                                         {isLoading ? (
                                             <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                         ) : (
-                                            isFull ? 'ENTRAR NA ESPERA' : 'CONFIRMAR PRESENÇA'
+                                            'JOGAR'
                                         )}
                                     </Button>
+                                ) : (
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        <Button
+                                            onClick={handleDecline}
+                                            disabled={isLoading}
+                                            variant="outline"
+                                            className="flex-1 sm:flex-none shrink-0 font-bold hover:bg-red-500 hover:text-white hover:border-red-500"
+                                        >
+                                            {isLoading ? (
+                                                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                                'NÃO JOGAR'
+                                            )}
+                                        </Button>
+                                        <Button
+                                            onClick={handleConfirm}
+                                            disabled={isLoading}
+                                            className="flex-1 sm:flex-none shrink-0 font-bold hover:opacity-90"
+                                            style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                                        >
+                                            {isLoading ? (
+                                                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                                'JOGAR'
+                                            )}
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
                         </CardContent>

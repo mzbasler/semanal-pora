@@ -284,12 +284,12 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                     disabled={isLoading !== null}
                                     variant="outline"
                                     size="sm"
-                                    className="font-bold text-muted-foreground hover:bg-muted"
+                                    className="font-bold hover:bg-red-500 hover:text-white hover:border-red-500"
                                 >
                                     {isLoading === 'decline' ? (
                                         <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                     ) : (
-                                        'NÃO VOU'
+                                        'NÃO JOGAR'
                                     )}
                                 </Button>
                                 <Button
@@ -302,7 +302,7 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                     {isLoading === 'confirm' ? (
                                         <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                     ) : (
-                                        isFull ? 'ESPERA' : 'CONFIRMAR'
+                                        'JOGAR'
                                     )}
                                 </Button>
                             </div>
@@ -347,7 +347,7 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                 {isLoading === 'decline' ? (
                                     <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                    'CANCELAR'
+                                    'NÃO JOGAR'
                                 )}
                             </Button>
                         </CardContent>
@@ -358,20 +358,24 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                 {showDeclinedCard && scheduledDate && (
                     <Card
                         variant="ghost"
-                        className="border transition-all duration-300 bg-card border-muted"
+                        className="border transition-all duration-300 bg-card"
+                        style={{
+                            borderColor: '#ef4444',
+                        }}
                     >
                         <CardContent className="p-3 flex items-center gap-3">
                             <div
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg bg-muted"
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
+                                style={{ backgroundColor: '#ef4444' }}
                             >
-                                <Calendar className="h-5 w-5 text-muted-foreground" />
+                                <Calendar className="h-5 w-5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-sm font-black tracking-wide capitalize">
                                     {format(scheduledDate, "EEEE", { locale: ptBR })} às {format(scheduledDate, "HH:mm")}
                                 </h3>
-                                <p className="text-xs font-semibold text-muted-foreground">
-                                    Você não vai jogar
+                                <p className="text-xs font-semibold text-red-500">
+                                    Não vou jogar
                                 </p>
                             </div>
                             <Button
@@ -384,7 +388,7 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                 {isLoading === 'confirm' ? (
                                     <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
-                                    'CONFIRMAR'
+                                    'JOGAR'
                                 )}
                             </Button>
                         </CardContent>
