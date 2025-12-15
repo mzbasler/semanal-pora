@@ -106,7 +106,9 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
 
     // Dados para o card de confirmação
     const hasConfirmedOrWaiting = pendingMatch?.userConfirmation?.status === 'confirmed' || pendingMatch?.userConfirmation?.status === 'waiting';
-    const showConfirmationCard = pendingMatch && !hasConfirmedOrWaiting;
+    const hasDeclined = pendingMatch?.userConfirmation?.status === 'declined';
+    const showConfirmationCard = pendingMatch && !hasConfirmedOrWaiting && !hasDeclined;
+    const showDeclinedCard = pendingMatch && hasDeclined;
     const pendingMatchData = pendingMatch?.match;
     const scheduledDate = pendingMatchData ? new Date(pendingMatchData.scheduled_at) : null;
     const availableSlots = pendingMatchData ? pendingMatchData.max_players - pendingMatchData.confirmed_count : 0;
@@ -276,19 +278,34 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                     Aguardando confirmação
                                 </p>
                             </div>
-                            <Button
-                                onClick={handleConfirm}
-                                disabled={isLoading !== null}
-                                size="sm"
-                                className="shrink-0 font-bold hover:opacity-90"
-                                style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
-                            >
-                                {isLoading === 'confirm' ? (
-                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    isFull ? 'ESPERA' : 'CONFIRMAR'
-                                )}
-                            </Button>
+                            <div className="flex gap-2 shrink-0">
+                                <Button
+                                    onClick={handleDecline}
+                                    disabled={isLoading !== null}
+                                    variant="outline"
+                                    size="sm"
+                                    className="font-bold text-muted-foreground hover:bg-muted"
+                                >
+                                    {isLoading === 'decline' ? (
+                                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        'NÃO VOU'
+                                    )}
+                                </Button>
+                                <Button
+                                    onClick={handleConfirm}
+                                    disabled={isLoading !== null}
+                                    size="sm"
+                                    className="font-bold hover:opacity-90"
+                                    style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                                >
+                                    {isLoading === 'confirm' ? (
+                                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        isFull ? 'ESPERA' : 'CONFIRMAR'
+                                    )}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 )}
@@ -331,6 +348,43 @@ export default function MatchesIndex({ nextMatch, matches, auth }: Props) {
                                     <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                 ) : (
                                     'CANCELAR'
+                                )}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Card para quem declinou - permite mudar de ideia */}
+                {showDeclinedCard && scheduledDate && (
+                    <Card
+                        variant="ghost"
+                        className="border transition-all duration-300 bg-card border-muted"
+                    >
+                        <CardContent className="p-3 flex items-center gap-3">
+                            <div
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg bg-muted"
+                            >
+                                <Calendar className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-black tracking-wide capitalize">
+                                    {format(scheduledDate, "EEEE", { locale: ptBR })} às {format(scheduledDate, "HH:mm")}
+                                </h3>
+                                <p className="text-xs font-semibold text-muted-foreground">
+                                    Você não vai jogar
+                                </p>
+                            </div>
+                            <Button
+                                onClick={handleConfirm}
+                                disabled={isLoading !== null}
+                                size="sm"
+                                className="shrink-0 font-bold hover:opacity-90"
+                                style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
+                            >
+                                {isLoading === 'confirm' ? (
+                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    'CONFIRMAR'
                                 )}
                             </Button>
                         </CardContent>
