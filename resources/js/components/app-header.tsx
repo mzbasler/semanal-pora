@@ -27,7 +27,7 @@ import { cn, isSameUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, Trophy, Users, Icon as LucideIcon, type LucideProps, Maximize2, Minimize2 } from 'lucide-react';
+import { LayoutGrid, Menu, Trophy, Users, Icon as LucideIcon, type LucideProps, Maximize2, Minimize2, Radio } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { soccerBall } from '@lucide/lab';
 import AppLogo from './app-logo';
@@ -74,6 +74,11 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
             title: 'Dashboard',
             href: dashboard(),
             icon: LayoutGrid,
+        },
+        {
+            title: 'Ao Vivo',
+            href: '/live',
+            icon: Radio,
         },
         {
             title: 'Partidas',

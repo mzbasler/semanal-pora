@@ -14,7 +14,7 @@ class FootballMatchController extends Controller
 {
     public function __construct(public MatchService $matchService) {}
 
-    public function index(): Response
+    public function live(): Response
     {
         // Próxima partida agendada (com ou sem escalação)
         $nextMatch = FootballMatch::query()
@@ -32,7 +32,14 @@ class FootballMatchController extends Controller
             ->orderBy('scheduled_at')
             ->first();
 
-        // Partidas finalizadas
+        return Inertia::render('matches/live', [
+            'nextMatch' => $nextMatch,
+        ]);
+    }
+
+    public function index(): Response
+    {
+        // Apenas partidas finalizadas
         $completedMatches = FootballMatch::query()
             ->with(['teamA', 'teamB'])
             ->where('status', 'completed')
@@ -40,7 +47,6 @@ class FootballMatchController extends Controller
             ->paginate(12);
 
         return Inertia::render('matches/index', [
-            'nextMatch' => $nextMatch,
             'matches' => $completedMatches,
         ]);
     }
@@ -293,6 +299,7 @@ class FootballMatchController extends Controller
             'players.*.id' => ['required', 'exists:match_players,id'],
             'players.*.goals' => ['required', 'integer', 'min:0'],
             'players.*.assists' => ['required', 'integer', 'min:0'],
+            'finalize' => ['sometimes', 'boolean'],
         ]);
 
         foreach ($validated['players'] as $playerData) {
@@ -305,15 +312,26 @@ class FootballMatchController extends Controller
         $teamAScore = $match->players()->where('team_id', $match->team_a_id)->sum('goals');
         $teamBScore = $match->players()->where('team_id', $match->team_b_id)->sum('goals');
 
-        $match->update([
+        $updateData = [
             'team_a_score' => $teamAScore,
             'team_b_score' => $teamBScore,
-            'status' => 'completed',
-            'played_at' => now(),
-        ]);
+        ];
 
-        return redirect()->route('matches.index')
-            ->with('success', 'Estatísticas atualizadas com sucesso!');
+        // Só finaliza se explicitamente solicitado
+        $shouldFinalize = $request->input('finalize', true);
+        if ($shouldFinalize) {
+            $updateData['status'] = 'completed';
+            $updateData['played_at'] = now();
+        }
+
+        $match->update($updateData);
+
+        if ($shouldFinalize) {
+            return redirect()->route('matches.live')
+                ->with('success', 'Partida finalizada com sucesso!');
+        }
+
+        return back();
     }
 
     public function destroy(FootballMatch $match)

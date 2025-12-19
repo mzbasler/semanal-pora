@@ -1,16 +1,17 @@
 import { ConfirmationBanner } from '@/components/confirmation-banner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { colors } from '@/config/colors';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import { Trophy, Icon, type LucideProps, Calendar, Vote } from 'lucide-react';
+import { Trophy, Icon, type LucideProps, Calendar, Vote, Radio } from 'lucide-react';
 import { soccerBall } from '@lucide/lab';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface PendingMatch {
     match: {
@@ -20,6 +21,28 @@ interface PendingMatch {
         confirmed_count: number;
     };
     userConfirmation: { id: number; is_confirmed: boolean; status: string } | null;
+}
+
+interface Team {
+    id: number;
+    name: string;
+    color: string;
+}
+
+interface MatchPlayer {
+    id: number;
+    user: { id: number; name: string };
+    team: Team;
+    goals: number;
+    assists: number;
+}
+
+interface LiveMatch {
+    id: number;
+    scheduled_at: string;
+    team_a: Team;
+    team_b: Team;
+    players: MatchPlayer[];
 }
 
 const SoccerBallIcon = (props: LucideProps) => (
@@ -35,29 +58,53 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const menuCards = [
     {
+        href: '/live',
+        title: 'AO VIVO',
+        subtitle: 'Acompanhar partida',
+        icon: Radio,
+        image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80',
+    },
+    {
         href: '/matches',
         title: 'PARTIDAS',
-        subtitle: 'Ver próximas partidas',
+        subtitle: 'Ver historico',
         icon: SoccerBallIcon,
-        image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80',
+        image: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&q=80',
     },
     {
         href: '/standings',
         title: 'CLASSIFICAÇÃO',
         subtitle: 'Ver ranking',
         icon: Trophy,
-        image: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80',
+        image: 'https://s2-ge.glbimg.com/zT-DS_e-5HGvAMGOWiDG5nQI7EI=/0x0:5704x3320/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2025/h/l/0ZLkCQT7aBIkwW7pTBmA/2025-12-17t201323z-139163107-up1elch1k6a9z-rtrmadp-3-soccer-intercontinental-psg-fla.jpg',
     },
 ];
 
 export default function Dashboard() {
-    const { pendingMatch } = usePage<{ pendingMatch: PendingMatch | null }>().props;
+    const { pendingMatch, liveMatch } = usePage<{ pendingMatch: PendingMatch | null; liveMatch: LiveMatch | null }>().props;
     const [isLoading, setIsLoading] = useState(false);
 
     const hasConfirmedOrWaiting = pendingMatch?.userConfirmation?.status === 'confirmed' || pendingMatch?.userConfirmation?.status === 'waiting';
     const hasDeclined = pendingMatch?.userConfirmation?.status === 'declined';
     const scheduledDate = pendingMatch?.match ? new Date(pendingMatch.match.scheduled_at) : null;
     const isFull = pendingMatch?.match ? pendingMatch.match.confirmed_count >= pendingMatch.match.max_players : false;
+
+    // Calcular placar da partida ao vivo
+    const teamAScore = liveMatch?.players?.filter(p => p.team.id === liveMatch.team_a.id).reduce((sum, p) => sum + p.goals, 0) || 0;
+    const teamBScore = liveMatch?.players?.filter(p => p.team.id === liveMatch.team_b.id).reduce((sum, p) => sum + p.goals, 0) || 0;
+
+    // Artilheiros e assistentes da partida ao vivo
+    const liveScorers = liveMatch?.players?.filter(p => p.goals > 0).sort((a, b) => b.goals - a.goals) || [];
+    const liveAssisters = liveMatch?.players?.filter(p => p.assists > 0).sort((a, b) => b.assists - a.assists) || [];
+
+    // Auto-refresh para partida ao vivo
+    useEffect(() => {
+        if (!liveMatch) return;
+        const interval = setInterval(() => {
+            router.reload({ only: ['liveMatch'] });
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [liveMatch]);
 
     const handleConfirm = () => {
         if (!pendingMatch?.match) return;
@@ -179,8 +226,72 @@ export default function Dashboard() {
                     </Card>
                 )}
 
+                {/* Card de partida ao vivo */}
+                {liveMatch && (
+                    <Link href="/live" className="block">
+                        <Card
+                            variant="ghost"
+                            className="shrink-0 border-2 border-red-500 transition-all duration-300 bg-card hover:shadow-lg hover:scale-[1.01]"
+                        >
+                            <CardContent className="p-4 sm:p-5">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500 animate-pulse">
+                                            <Radio className="h-4 w-4 text-white" />
+                                        </div>
+                                        <h3 className="text-sm font-black tracking-wide">AO VIVO</h3>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex flex-col items-center">
+                                            <div
+                                                className="h-10 w-10 rounded-full shadow"
+                                                style={{ backgroundColor: liveMatch.team_a.color }}
+                                            />
+                                            <span className="text-[10px] font-medium mt-1">{liveMatch.team_a.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-3xl font-bold">{teamAScore}</span>
+                                            <span className="text-lg text-muted-foreground font-medium">x</span>
+                                            <span className="text-3xl font-bold">{teamBScore}</span>
+                                        </div>
+                                        <div className="flex flex-col items-center">
+                                            <div
+                                                className="h-10 w-10 rounded-full border border-gray-300 shadow"
+                                                style={{ backgroundColor: liveMatch.team_b.color }}
+                                            />
+                                            <span className="text-[10px] font-medium mt-1">{liveMatch.team_b.name}</span>
+                                        </div>
+                                    </div>
+                                    {/* Estatísticas */}
+                                    {(liveScorers.length > 0 || liveAssisters.length > 0) && (
+                                        <div className="flex flex-col gap-1 mt-3 text-[10px] text-muted-foreground">
+                                            {liveScorers.length > 0 && (
+                                                <div>
+                                                    <span className="font-semibold">Gols: </span>
+                                                    {liveScorers.slice(0, 3).map((p, i) => (
+                                                        <span key={p.id}>{i > 0 && ', '}{p.user.name} ({p.goals})</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {liveAssisters.length > 0 && (
+                                                <div>
+                                                    <span className="font-semibold">Assist: </span>
+                                                    {liveAssisters.slice(0, 3).map((p, i) => (
+                                                        <span key={p.id}>{i > 0 && ', '}{p.user.name} ({p.assists})</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="text-[10px] text-muted-foreground mt-2">Toque para acompanhar</div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                )}
+
                 {/* Cards de navegação */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 flex-1 min-h-0">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1 min-h-0">
                     {menuCards.map((card) => {
                         const CardIcon = card.icon;
                         return (
@@ -213,7 +324,7 @@ export default function Dashboard() {
                     })}
 
                     {/* Card de Votações - desativado */}
-                    <div className="group relative overflow-hidden rounded-xl border border-[#0D1B4C]/30 dark:border-border bg-muted/50 opacity-50 cursor-not-allowed col-span-2 md:col-span-1">
+                    <div className="group relative overflow-hidden rounded-xl border border-[#0D1B4C]/30 dark:border-border bg-muted/50 opacity-50 cursor-not-allowed">
                         <div className="relative z-10 flex h-full flex-col justify-between p-4 sm:p-3">
                             <div className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground shadow-lg">
                                 <Vote className="h-5 w-5 sm:h-4 sm:w-4" />

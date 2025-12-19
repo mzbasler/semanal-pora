@@ -41,11 +41,20 @@ class DashboardController extends Controller
             ->orderBy('scheduled_at', 'desc')
             ->first();
 
+        // Partida ao vivo (com escalação definida)
+        $liveMatch = FootballMatch::query()
+            ->with(['teamA', 'teamB', 'players.user', 'players.team'])
+            ->where('status', 'scheduled')
+            ->whereHas('players')
+            ->orderBy('scheduled_at')
+            ->first();
+
         return Inertia::render('dashboard', [
             'nextMatch' => $nextMatch,
             'userConfirmation' => $userConfirmation,
             'standings' => $standings,
             'lastMatch' => $lastMatch,
+            'liveMatch' => $liveMatch,
         ]);
     }
 }

@@ -18,6 +18,9 @@ Route::middleware(['auth'])->group(function () {
     // Standings / Leaderboard
     Route::get('standings', [\App\Http\Controllers\StandingsController::class, 'index'])->name('standings.index');
 
+    // Live Match
+    Route::get('live', [\App\Http\Controllers\FootballMatchController::class, 'live'])->name('matches.live');
+
     // Matches
     Route::get('matches', [\App\Http\Controllers\FootballMatchController::class, 'index'])->name('matches.index');
     Route::get('matches/create', [\App\Http\Controllers\FootballMatchController::class, 'create'])->name('matches.create');

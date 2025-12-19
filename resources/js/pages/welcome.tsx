@@ -206,10 +206,6 @@ export default function Welcome({
                                 #nãoésófutebol
                             </p>
 
-                            <p className="mx-auto mb-6 max-w-2xl text-base text-white sm:mb-8 sm:text-lg md:text-xl">
-                                Organize o racha, sorteie os times, vote nos craques e acompanhe quem tá voando.
-                            </p>
-
                             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                                 <Link
                                     href={auth.user ? dashboard() : login()}
@@ -233,102 +229,6 @@ export default function Welcome({
                                 </h2>
                                 <p className="mt-1 text-sm text-gray-500 sm:mt-2 sm:text-base">Ranking completo dos jogadores</p>
                             </div>
-
-                            {standings.length > 0 && (() => {
-                                const topScorers = [...standings]
-                                    .filter(p => p.total_goals > 0)
-                                    .sort((a, b) => b.total_goals - a.total_goals)
-                                    .slice(0, 10);
-                                const topAssisters = [...standings]
-                                    .filter(p => p.total_assists > 0)
-                                    .sort((a, b) => b.total_assists - a.total_assists)
-                                    .slice(0, 10);
-                                const getMedalColorLocal = (position: number) => {
-                                    if (position === 1) return 'text-yellow-500';
-                                    if (position === 2) return 'text-gray-400';
-                                    if (position === 3) return 'text-amber-600';
-                                    return 'text-gray-500';
-                                };
-
-                                return (
-                                    <div className="mb-6 grid gap-4 md:grid-cols-3">
-                                        {/* Top 10 Artilheiros */}
-                                        <Card className="bg-transparent shadow-none" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
-                                            <CardHeader className="p-4 pb-2">
-                                                <CardTitle className="flex items-center gap-2 text-sm font-medium text-black">
-                                                    <Target className="h-4 w-4 text-yellow-500" />
-                                                    Top 10 Artilheiros
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0">
-                                                {topScorers.length > 0 ? (
-                                                    <div className="space-y-2">
-                                                        {topScorers.map((player, index) => (
-                                                            <div key={player.user_id} className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className={`w-5 text-sm font-bold ${getMedalColorLocal(index + 1)}`}>
-                                                                        {index + 1}º
-                                                                    </span>
-                                                                    <span className="text-sm text-black truncate max-w-[120px]">{player.user.name}</span>
-                                                                </div>
-                                                                <Badge variant="secondary" className="text-xs">
-                                                                    {player.total_goals} gols
-                                                                </Badge>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-sm text-black/50 text-center py-4">Sem dados</p>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Top 10 Assistências */}
-                                        <Card className="bg-transparent shadow-none" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
-                                            <CardHeader className="p-4 pb-2">
-                                                <CardTitle className="flex items-center gap-2 text-sm font-medium text-black">
-                                                    <Users className="h-4 w-4 text-yellow-500" />
-                                                    Top 10 Assistências
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0">
-                                                {topAssisters.length > 0 ? (
-                                                    <div className="space-y-2">
-                                                        {topAssisters.map((player, index) => (
-                                                            <div key={player.user_id} className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className={`w-5 text-sm font-bold ${getMedalColorLocal(index + 1)}`}>
-                                                                        {index + 1}º
-                                                                    </span>
-                                                                    <span className="text-sm text-black truncate max-w-[120px]">{player.user.name}</span>
-                                                                </div>
-                                                                <Badge variant="secondary" className="text-xs">
-                                                                    {player.total_assists} assist.
-                                                                </Badge>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-sm text-black/50 text-center py-4">Sem dados</p>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Top 10 Atrasos */}
-                                        <Card className="bg-transparent shadow-none" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
-                                            <CardHeader className="p-4 pb-2">
-                                                <CardTitle className="flex items-center gap-2 text-sm font-medium text-black">
-                                                    <Clock className="h-4 w-4 text-yellow-500" />
-                                                    Top 10 Atrasos
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0">
-                                                <p className="text-sm text-black/50 text-center py-4">Em breve</p>
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                );
-                            })()}
 
                             <Card className="bg-transparent shadow-none" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
                                 <CardHeader className="p-4 sm:p-6">
@@ -413,6 +313,102 @@ export default function Welcome({
                                     )}
                                 </CardContent>
                             </Card>
+
+                            {standings.length > 0 && (() => {
+                                const topScorers = [...standings]
+                                    .filter(p => p.total_goals > 0)
+                                    .sort((a, b) => b.total_goals - a.total_goals)
+                                    .slice(0, 10);
+                                const topAssisters = [...standings]
+                                    .filter(p => p.total_assists > 0)
+                                    .sort((a, b) => b.total_assists - a.total_assists)
+                                    .slice(0, 10);
+                                const getMedalColorLocal = (position: number) => {
+                                    if (position === 1) return 'text-yellow-500';
+                                    if (position === 2) return 'text-gray-400';
+                                    if (position === 3) return 'text-amber-600';
+                                    return 'text-gray-500';
+                                };
+
+                                return (
+                                    <div className="mt-6 grid gap-4 md:grid-cols-3">
+                                        {/* Top 10 Artilheiros */}
+                                        <Card className="bg-transparent shadow-none" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
+                                            <CardHeader className="p-4 pb-2">
+                                                <CardTitle className="flex items-center gap-2 text-sm font-medium text-black">
+                                                    <Target className="h-4 w-4 text-yellow-500" />
+                                                    Top 10 Artilheiros
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-0">
+                                                {topScorers.length > 0 ? (
+                                                    <div className="space-y-2">
+                                                        {topScorers.map((player, index) => (
+                                                            <div key={player.user_id} className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`w-5 text-sm font-bold ${getMedalColorLocal(index + 1)}`}>
+                                                                        {index + 1}º
+                                                                    </span>
+                                                                    <span className="text-sm text-black truncate max-w-[120px]">{player.user.name}</span>
+                                                                </div>
+                                                                <Badge variant="secondary" className="text-xs">
+                                                                    {player.total_goals} gols
+                                                                </Badge>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-black/50 text-center py-4">Sem dados</p>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+
+                                        {/* Top 10 Assistências */}
+                                        <Card className="bg-transparent shadow-none" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
+                                            <CardHeader className="p-4 pb-2">
+                                                <CardTitle className="flex items-center gap-2 text-sm font-medium text-black">
+                                                    <Users className="h-4 w-4 text-yellow-500" />
+                                                    Top 10 Assistências
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-0">
+                                                {topAssisters.length > 0 ? (
+                                                    <div className="space-y-2">
+                                                        {topAssisters.map((player, index) => (
+                                                            <div key={player.user_id} className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`w-5 text-sm font-bold ${getMedalColorLocal(index + 1)}`}>
+                                                                        {index + 1}º
+                                                                    </span>
+                                                                    <span className="text-sm text-black truncate max-w-[120px]">{player.user.name}</span>
+                                                                </div>
+                                                                <Badge variant="secondary" className="text-xs">
+                                                                    {player.total_assists} assist.
+                                                                </Badge>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-black/50 text-center py-4">Sem dados</p>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+
+                                        {/* Top 10 Atrasos */}
+                                        <Card className="bg-transparent shadow-none" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
+                                            <CardHeader className="p-4 pb-2">
+                                                <CardTitle className="flex items-center gap-2 text-sm font-medium text-black">
+                                                    <Clock className="h-4 w-4 text-yellow-500" />
+                                                    Top 10 Atrasos
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-0">
+                                                <p className="text-sm text-black/50 text-center py-4">Em breve</p>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                );
+                            })()}
 
                             <Card className="mt-4 bg-transparent shadow-none sm:mt-6" style={{ borderColor: colors.brand.blue, borderWidth: 1 }}>
                                 <CardHeader className="p-4 sm:p-6">
