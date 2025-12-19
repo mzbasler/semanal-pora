@@ -39,7 +39,14 @@ class FootballMatchController extends Controller
 
     public function index(): Response
     {
-        // Apenas partidas finalizadas
+        // Partidas agendadas (ainda não finalizadas)
+        $scheduledMatches = FootballMatch::query()
+            ->with(['teamA', 'teamB', 'confirmations', 'players'])
+            ->where('status', 'scheduled')
+            ->orderBy('scheduled_at')
+            ->get();
+
+        // Partidas finalizadas
         $completedMatches = FootballMatch::query()
             ->with(['teamA', 'teamB'])
             ->where('status', 'completed')
@@ -47,6 +54,7 @@ class FootballMatchController extends Controller
             ->paginate(12);
 
         return Inertia::render('matches/index', [
+            'scheduledMatches' => $scheduledMatches,
             'matches' => $completedMatches,
         ]);
     }

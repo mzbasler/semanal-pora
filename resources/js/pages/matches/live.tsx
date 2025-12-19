@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Calendar, Users, ArrowLeftRight, Square, Redo, Icon, type LucideProps, Trash2, Radio } from 'lucide-react';
 import { soccerBall } from '@lucide/lab';
 
@@ -48,16 +48,6 @@ interface Match {
     players?: MatchPlayer[];
 }
 
-interface PendingMatch {
-    match: {
-        id: number;
-        scheduled_at: string;
-        max_players: number;
-        confirmed_count: number;
-    };
-    userConfirmation: { id: number; is_confirmed: boolean; status: string } | null;
-}
-
 interface Props {
     nextMatch: Match | null;
     auth: {
@@ -73,8 +63,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function LiveMatch({ nextMatch, auth }: Props) {
-    const { pendingMatch } = usePage<{ pendingMatch: PendingMatch | null }>().props;
-    const [isLoading, setIsLoading] = useState<'confirm' | 'decline' | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -114,7 +102,7 @@ export default function LiveMatch({ nextMatch, auth }: Props) {
     // Auto-refresh a cada 10 segundos
     useEffect(() => {
         const interval = setInterval(() => {
-            router.reload({ only: ['nextMatch', 'pendingMatch'] });
+            router.reload({ only: ['nextMatch'] });
         }, 10000);
 
         return () => clearInterval(interval);
@@ -123,32 +111,6 @@ export default function LiveMatch({ nextMatch, auth }: Props) {
     // Calcular placar baseado nos stats locais
     const teamAScore = teamAPlayers.reduce((sum, p) => sum + (stats[p.id]?.goals || 0), 0);
     const teamBScore = teamBPlayers.reduce((sum, p) => sum + (stats[p.id]?.goals || 0), 0);
-
-    // Dados para o card de confirmação
-    const hasConfirmedOrWaiting = pendingMatch?.userConfirmation?.status === 'confirmed' || pendingMatch?.userConfirmation?.status === 'waiting';
-    const hasDeclined = pendingMatch?.userConfirmation?.status === 'declined';
-    const showConfirmationCard = pendingMatch && !hasConfirmedOrWaiting && !hasDeclined;
-    const showDeclinedCard = pendingMatch && hasDeclined;
-    const pendingMatchData = pendingMatch?.match;
-    const scheduledDate = pendingMatchData ? new Date(pendingMatchData.scheduled_at) : null;
-
-    const handleConfirm = () => {
-        if (!pendingMatchData) return;
-        setIsLoading('confirm');
-        router.post(`/matches/${pendingMatchData.id}/confirm`, { confirmed: true }, {
-            preserveScroll: true,
-            onFinish: () => setIsLoading(null),
-        });
-    };
-
-    const handleDecline = () => {
-        if (!pendingMatchData) return;
-        setIsLoading('decline');
-        router.post(`/matches/${pendingMatchData.id}/confirm`, { confirmed: false }, {
-            preserveScroll: true,
-            onFinish: () => setIsLoading(null),
-        });
-    };
 
     const handleStatChange = (playerId: number, field: 'goals' | 'assists', delta: number) => {
         const newValue = Math.max(0, (stats[playerId]?.[field] || 0) + delta);
@@ -286,147 +248,6 @@ export default function LiveMatch({ nextMatch, auth }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Ao Vivo" />
             <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
-                {/* Card de Confirmação - para quem ainda não confirmou */}
-                {showConfirmationCard && scheduledDate && (
-                    <Card
-                        variant="ghost"
-                        className="border transition-all duration-300 bg-card"
-                        style={{
-                            borderColor: colors.actions.primary,
-                        }}
-                    >
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
-                                style={{ backgroundColor: colors.actions.primary }}
-                            >
-                                <Calendar className="h-5 w-5" style={{ color: colors.actions.primaryText }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-black tracking-wide capitalize">
-                                    {format(scheduledDate, "EEEE", { locale: ptBR })} às {format(scheduledDate, "HH:mm")}
-                                </h3>
-                                <p className="text-xs font-semibold" style={{ color: colors.actions.primary }}>
-                                    Aguardando confirmação
-                                </p>
-                            </div>
-                            <div className="flex gap-2 shrink-0">
-                                <Button
-                                    onClick={handleDecline}
-                                    disabled={isLoading !== null}
-                                    variant="outline"
-                                    size="sm"
-                                    className="font-bold hover:bg-red-500 hover:text-white hover:border-red-500"
-                                >
-                                    {isLoading === 'decline' ? (
-                                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                        'NÃO JOGAR'
-                                    )}
-                                </Button>
-                                <Button
-                                    onClick={handleConfirm}
-                                    disabled={isLoading !== null}
-                                    size="sm"
-                                    className="font-bold hover:opacity-90"
-                                    style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
-                                >
-                                    {isLoading === 'confirm' ? (
-                                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                        'JOGAR'
-                                    )}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Card para quem já confirmou - permite cancelar */}
-                {hasConfirmedOrWaiting && scheduledDate && (
-                    <Card
-                        variant="ghost"
-                        className="border transition-all duration-300 bg-card"
-                        style={{
-                            borderColor: colors.actions.success,
-                        }}
-                    >
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
-                                style={{ backgroundColor: colors.actions.success }}
-                            >
-                                <Calendar className="h-5 w-5" style={{ color: colors.actions.successText }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-black tracking-wide capitalize">
-                                    {format(scheduledDate, "EEEE", { locale: ptBR })} às {format(scheduledDate, "HH:mm")}
-                                </h3>
-                                <p className="text-xs font-semibold" style={{ color: colors.actions.success }}>
-                                    {pendingMatch?.userConfirmation?.status === 'confirmed'
-                                        ? '✓ Presença confirmada'
-                                        : '⏳ Na lista de espera'
-                                    }
-                                </p>
-                            </div>
-                            <Button
-                                onClick={handleDecline}
-                                disabled={isLoading !== null}
-                                variant="outline"
-                                size="sm"
-                                className="shrink-0 font-bold text-red-500 border-red-500/80 hover:bg-red-500 hover:text-white hover:border-red-500"
-                            >
-                                {isLoading === 'decline' ? (
-                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    'NÃO JOGAR'
-                                )}
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Card para quem declinou - permite mudar de ideia */}
-                {showDeclinedCard && scheduledDate && (
-                    <Card
-                        variant="ghost"
-                        className="border transition-all duration-300 bg-card"
-                        style={{
-                            borderColor: '#ef4444',
-                        }}
-                    >
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
-                                style={{ backgroundColor: '#ef4444' }}
-                            >
-                                <Calendar className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-black tracking-wide capitalize">
-                                    {format(scheduledDate, "EEEE", { locale: ptBR })} às {format(scheduledDate, "HH:mm")}
-                                </h3>
-                                <p className="text-xs font-semibold text-red-500">
-                                    Não vou jogar
-                                </p>
-                            </div>
-                            <Button
-                                onClick={handleConfirm}
-                                disabled={isLoading !== null}
-                                size="sm"
-                                className="shrink-0 font-bold hover:opacity-90"
-                                style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}
-                            >
-                                {isLoading === 'confirm' ? (
-                                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    'JOGAR'
-                                )}
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
-
                 {/* Header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">

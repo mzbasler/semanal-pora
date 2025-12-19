@@ -231,7 +231,7 @@ export default function Dashboard() {
                     <Link href="/live" className="block">
                         <Card
                             variant="ghost"
-                            className="shrink-0 border-2 border-red-500 transition-all duration-300 bg-card hover:shadow-lg hover:scale-[1.01]"
+                            className="shrink-0 border-2 border-red-500 transition-all duration-300 hover:shadow-lg hover:scale-[1.01]"
                         >
                             <CardContent className="p-4 sm:p-5">
                                 <div className="flex flex-col items-center text-center">
