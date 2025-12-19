@@ -1,9 +1,11 @@
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
-import { Calendar, Trophy } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { Calendar, Trophy, Plus } from 'lucide-react';
+import { colors } from '@/config/colors';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -30,6 +32,11 @@ interface Props {
         current_page: number;
         last_page: number;
     };
+    auth: {
+        user: {
+            role: string;
+        };
+    };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -37,17 +44,29 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Partidas', href: '/matches' },
 ];
 
-export default function MatchesIndex({ matches }: Props) {
+export default function MatchesIndex({ matches, auth }: Props) {
+    const isAdmin = auth.user.role === 'president' || auth.user.role === 'vice_president';
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Partidas" />
             <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
                 {/* Header */}
-                <div>
-                    <h1 className="text-2xl font-bold sm:text-3xl">Partidas Anteriores</h1>
-                    <p className="text-sm text-muted-foreground sm:text-base">
-                        Historico do Campeonato Semanal {new Date().getFullYear()}
-                    </p>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold sm:text-3xl">Partidas Anteriores</h1>
+                        <p className="text-sm text-muted-foreground sm:text-base">
+                            Historico do Campeonato Semanal {new Date().getFullYear()}
+                        </p>
+                    </div>
+                    {isAdmin && (
+                        <Button asChild className="w-full sm:w-auto hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
+                            <Link href="/matches/create">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nova Partida
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
                 {matches.data.length > 0 ? (

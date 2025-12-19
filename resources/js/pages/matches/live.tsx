@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Calendar, Users, ArrowLeftRight, Plus, Square, Redo, Icon, type LucideProps, Trash2, Radio } from 'lucide-react';
+import { Calendar, Users, ArrowLeftRight, Square, Redo, Icon, type LucideProps, Trash2, Radio } from 'lucide-react';
 import { soccerBall } from '@lucide/lab';
 
 const SoccerBallIcon = (props: LucideProps) => (
@@ -447,16 +447,6 @@ export default function LiveMatch({ nextMatch, auth }: Props) {
                             </p>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        {isAdmin && (
-                            <Button asChild className="w-full sm:w-auto hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
-                                <Link href="/matches/create">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Nova Partida
-                                </Link>
-                            </Button>
-                        )}
-                    </div>
                 </div>
 
                 {/* Próxima Partida com Escalação e Stats */}
@@ -628,16 +618,8 @@ export default function LiveMatch({ nextMatch, auth }: Props) {
                             </div>
                             <p className="text-lg font-semibold">Nenhuma partida agendada</p>
                             <p className="text-muted-foreground">
-                                {isAdmin ? 'Crie uma nova partida para começar' : 'Aguarde o administrador criar uma partida'}
+                                {isAdmin ? 'Crie uma nova partida em Partidas' : 'Aguarde o administrador criar uma partida'}
                             </p>
-                            {isAdmin && (
-                                <Link href="/matches/create" className="mt-4">
-                                    <Button className="hover:opacity-90" style={{ backgroundColor: colors.actions.primary, color: colors.actions.primaryText }}>
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Criar partida
-                                    </Button>
-                                </Link>
-                            )}
                         </CardContent>
                     </Card>
                 )}
